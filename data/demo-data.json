@@ -1,0 +1,368 @@
+{
+  "hcps": [
+    {
+      "id": "hcp-oncology-meier",
+      "name": "Dr. Lena Meier",
+      "role": "Medical oncologist",
+      "location": "Regional Cancer Center",
+      "focus": "Thoracic, breast, and melanoma oncology",
+      "accent": "teal",
+      "sourceRecords": [
+        {
+          "id": "src-onc-001",
+          "name": "Maria Keller",
+          "age": 62,
+          "dob": "1964-02-14",
+          "address": "Bergstrasse 18, Zurich",
+          "recordNumber": "ZRH-ONC-18421",
+          "diagnoses": ["Metastatic non-small cell lung cancer"],
+          "biomarkers": ["EGFR exon 19 deletion", "PD-L1 15%"],
+          "currentTherapies": ["Osimertinib"],
+          "careContext": ["CNS surveillance", "Second-line therapy planning"]
+        },
+        {
+          "id": "src-onc-002",
+          "name": "Elena Rossi",
+          "age": 55,
+          "dob": "1970-06-03",
+          "address": "Via Roma 11, Lugano",
+          "recordNumber": "ZRH-ONC-22390",
+          "diagnoses": ["HER2-positive metastatic breast cancer"],
+          "biomarkers": ["HER2 IHC 3+", "ER low positive"],
+          "currentTherapies": ["Trastuzumab deruxtecan"],
+          "careContext": ["Interstitial lung disease monitoring", "Third-line therapy"]
+        },
+        {
+          "id": "src-onc-003",
+          "name": "Jonas Berger",
+          "age": 48,
+          "dob": "1977-09-22",
+          "address": "Limmatweg 7, Baden",
+          "recordNumber": "ZRH-ONC-24102",
+          "diagnoses": ["Stage III melanoma"],
+          "biomarkers": ["BRAF V600E"],
+          "currentTherapies": ["Adjuvant immunotherapy"],
+          "careContext": ["Immune-related colitis history", "Toxicity follow-up"]
+        }
+      ],
+      "relevanceProfile": {
+        "summary": "Thoracic, breast, and melanoma cases with biomarker-driven therapy decisions and immunotherapy toxicity management.",
+        "traits": [
+          "EGFR-positive metastatic lung cancer",
+          "CNS surveillance in lung cancer",
+          "HER2-positive metastatic breast cancer",
+          "Trastuzumab deruxtecan safety monitoring",
+          "BRAF-mutated melanoma",
+          "Immune-related adverse event management"
+        ],
+        "domains": ["oncology", "thoracic oncology", "breast oncology", "melanoma"]
+      }
+    },
+    {
+      "id": "hcp-cardiology-fischer",
+      "name": "Dr. Noah Fischer",
+      "role": "Cardiologist",
+      "location": "Heart and Vascular Clinic",
+      "focus": "Heart failure, atrial fibrillation, and secondary prevention",
+      "accent": "blue",
+      "sourceRecords": [
+        {
+          "id": "src-card-001",
+          "name": "Peter Baumann",
+          "age": 71,
+          "dob": "1954-11-02",
+          "address": "Seefeldstrasse 60, Zurich",
+          "recordNumber": "CARD-55120",
+          "diagnoses": ["Heart failure with reduced ejection fraction"],
+          "biomarkers": ["LVEF 32%", "NT-proBNP elevated"],
+          "currentTherapies": ["ARNI", "Beta blocker", "SGLT2 inhibitor"],
+          "careContext": ["Iron deficiency screening", "Recent decompensation"]
+        },
+        {
+          "id": "src-card-002",
+          "name": "Sabine Weber",
+          "age": 68,
+          "dob": "1957-01-30",
+          "address": "Bahnhofplatz 4, Bern",
+          "recordNumber": "CARD-56433",
+          "diagnoses": ["Atrial fibrillation", "Chronic kidney disease stage 3"],
+          "biomarkers": ["eGFR 42", "CHA2DS2-VASc 4"],
+          "currentTherapies": ["DOAC anticoagulation"],
+          "careContext": ["Renal dosing review", "Bleeding risk monitoring"]
+        },
+        {
+          "id": "src-card-003",
+          "name": "Marco Steiner",
+          "age": 59,
+          "dob": "1966-04-19",
+          "address": "Industriestrasse 31, Winterthur",
+          "recordNumber": "CARD-57791",
+          "diagnoses": ["Post-myocardial infarction secondary prevention"],
+          "biomarkers": ["LDL 2.4 mmol/L", "Lp(a) elevated"],
+          "currentTherapies": ["High-intensity statin", "Ezetimibe"],
+          "careContext": ["Residual lipid risk", "Cardiac rehabilitation"]
+        }
+      ],
+      "relevanceProfile": {
+        "summary": "Cardiology panel with HFrEF optimization, anticoagulation in CKD, and post-MI residual lipid risk.",
+        "traits": [
+          "Heart failure with reduced ejection fraction",
+          "SGLT2 inhibitor use in heart failure",
+          "Iron deficiency in heart failure",
+          "Atrial fibrillation with CKD",
+          "DOAC renal dosing",
+          "Post-MI lipid risk"
+        ],
+        "domains": ["cardiology", "heart failure", "atrial fibrillation", "secondary prevention"]
+      }
+    },
+    {
+      "id": "hcp-endocrine-keller",
+      "name": "Dr. Sofia Keller",
+      "role": "Endocrinologist and diabetologist",
+      "location": "Metabolic Health Practice",
+      "focus": "Diabetes, obesity, and kidney-risk patients",
+      "accent": "green",
+      "sourceRecords": [
+        {
+          "id": "src-endo-001",
+          "name": "Thomas Frei",
+          "age": 64,
+          "dob": "1961-12-09",
+          "address": "Mattenweg 22, Basel",
+          "recordNumber": "ENDO-12100",
+          "diagnoses": ["Type 2 diabetes", "Chronic kidney disease stage 3"],
+          "biomarkers": ["UACR 210 mg/g", "HbA1c 8.1%"],
+          "currentTherapies": ["Metformin", "SGLT2 inhibitor"],
+          "careContext": ["Kidney-risk reduction", "Cardiovascular risk"]
+        },
+        {
+          "id": "src-endo-002",
+          "name": "Nadine Graf",
+          "age": 46,
+          "dob": "1979-05-28",
+          "address": "Kirchgasse 14, Luzern",
+          "recordNumber": "ENDO-12248",
+          "diagnoses": ["Obesity", "Type 2 diabetes"],
+          "biomarkers": ["BMI 36", "HbA1c 7.8%"],
+          "currentTherapies": ["GLP-1 receptor agonist"],
+          "careContext": ["Weight management", "Therapy adherence"]
+        },
+        {
+          "id": "src-endo-003",
+          "name": "Luca Rieder",
+          "age": 31,
+          "dob": "1994-08-12",
+          "address": "Hauptstrasse 9, St. Gallen",
+          "recordNumber": "ENDO-12810",
+          "diagnoses": ["Type 1 diabetes"],
+          "biomarkers": ["Time in range 58%", "Hypoglycemia episodes"],
+          "currentTherapies": ["Insulin pump", "Continuous glucose monitor"],
+          "careContext": ["Closed-loop optimization", "Hypoglycemia prevention"]
+        }
+      ],
+      "relevanceProfile": {
+        "summary": "Diabetes and metabolic-risk panel with CKD, obesity, GLP-1 therapy, and insulin technology needs.",
+        "traits": [
+          "Type 2 diabetes with CKD",
+          "Albuminuria risk reduction",
+          "SGLT2 inhibitor kidney protection",
+          "Obesity with type 2 diabetes",
+          "GLP-1 receptor agonist therapy",
+          "Type 1 diabetes technology"
+        ],
+        "domains": ["endocrinology", "diabetes", "obesity", "kidney risk"]
+      }
+    },
+    {
+      "id": "hcp-rheum-dubois",
+      "name": "Dr. Marc Dubois",
+      "role": "Rheumatologist",
+      "location": "Inflammatory Disease Center",
+      "focus": "Inflammatory arthritis and lupus nephritis",
+      "accent": "violet",
+      "sourceRecords": [
+        {
+          "id": "src-rheum-001",
+          "name": "Claudia Moser",
+          "age": 57,
+          "dob": "1968-03-15",
+          "address": "Rosenweg 2, Thun",
+          "recordNumber": "RHEUM-33912",
+          "diagnoses": ["Rheumatoid arthritis"],
+          "biomarkers": ["Anti-CCP positive", "CRP elevated"],
+          "currentTherapies": ["JAK inhibitor"],
+          "careContext": ["Herpes zoster vaccination", "Infection risk"]
+        },
+        {
+          "id": "src-rheum-002",
+          "name": "Reto Kunz",
+          "age": 43,
+          "dob": "1982-10-04",
+          "address": "Muehleweg 5, Aarau",
+          "recordNumber": "RHEUM-34001",
+          "diagnoses": ["Psoriatic arthritis"],
+          "biomarkers": ["Dactylitis", "Skin flare"],
+          "currentTherapies": ["IL-17 inhibitor"],
+          "careContext": ["Joint and skin response", "Biologic sequencing"]
+        },
+        {
+          "id": "src-rheum-003",
+          "name": "Maya Schmid",
+          "age": 39,
+          "dob": "1986-07-21",
+          "address": "Neugasse 8, Chur",
+          "recordNumber": "RHEUM-34752",
+          "diagnoses": ["Systemic lupus erythematosus", "Lupus nephritis"],
+          "biomarkers": ["Proteinuria", "Anti-dsDNA positive"],
+          "currentTherapies": ["Mycophenolate", "Hydroxychloroquine"],
+          "careContext": ["Renal flare prevention", "Steroid-sparing care"]
+        }
+      ],
+      "relevanceProfile": {
+        "summary": "Rheumatology panel with biologic and targeted synthetic therapy safety, psoriatic arthritis, and lupus nephritis.",
+        "traits": [
+          "Rheumatoid arthritis on JAK inhibitor",
+          "Herpes zoster vaccination",
+          "Infection risk with targeted therapy",
+          "Psoriatic arthritis on IL-17 inhibitor",
+          "Lupus nephritis",
+          "Steroid-sparing lupus care"
+        ],
+        "domains": ["rheumatology", "inflammatory arthritis", "lupus"]
+      }
+    },
+    {
+      "id": "hcp-oncology-pharmacy-rossi",
+      "name": "Andrea Rossi",
+      "role": "Oncology nurse specialist and clinical pharmacist",
+      "location": "Oncology Day Unit",
+      "focus": "Medication safety, adherence, and adverse-event management",
+      "accent": "amber",
+      "sourceRecords": [
+        {
+          "id": "src-pharm-001",
+          "name": "Urs Meier",
+          "age": 66,
+          "dob": "1959-02-01",
+          "address": "Feldweg 16, Zug",
+          "recordNumber": "PHARM-60010",
+          "diagnoses": ["Metastatic colorectal cancer"],
+          "biomarkers": ["RAS wild type"],
+          "currentTherapies": ["FOLFOX", "EGFR antibody"],
+          "careContext": ["Chemotherapy-induced nausea", "Neuropathy counseling"]
+        },
+        {
+          "id": "src-pharm-002",
+          "name": "Petra Lang",
+          "age": 52,
+          "dob": "1973-11-11",
+          "address": "Poststrasse 27, Zurich",
+          "recordNumber": "PHARM-60342",
+          "diagnoses": ["Renal cell carcinoma"],
+          "biomarkers": ["IMDC intermediate risk"],
+          "currentTherapies": ["Immune checkpoint inhibitor", "VEGF TKI"],
+          "careContext": ["Immune-related adverse events", "Oral TKI adherence"]
+        },
+        {
+          "id": "src-pharm-003",
+          "name": "Anne Vogel",
+          "age": 60,
+          "dob": "1965-01-18",
+          "address": "Seestrasse 101, Rapperswil",
+          "recordNumber": "PHARM-60800",
+          "diagnoses": ["Diffuse large B-cell lymphoma"],
+          "biomarkers": ["Neutropenia risk"],
+          "currentTherapies": ["R-CHOP"],
+          "careContext": ["Febrile neutropenia prevention", "Antiemetic planning"]
+        }
+      ],
+      "relevanceProfile": {
+        "summary": "Oncology support panel focused on adverse-event triage, oral therapy adherence, antiemetics, and neutropenia prevention.",
+        "traits": [
+          "Chemotherapy-induced nausea and vomiting",
+          "Immune-related adverse event management",
+          "Oral TKI adherence",
+          "Febrile neutropenia prevention",
+          "Antiemetic planning",
+          "Oncology medication safety"
+        ],
+        "domains": ["oncology support", "oncology pharmacy", "nursing", "medication safety"]
+      }
+    }
+  ],
+  "newsletters": [
+    {
+      "id": "newsletter-egfr-lung",
+      "title": "EGFR Lung Cancer Therapy Update",
+      "source": "Swiss Oncology Digest",
+      "publishedAt": "2026-05-10",
+      "readingTime": "5 min",
+      "topic": "Thoracic oncology",
+      "sourceUrl": "https://example.org/newsletters/egfr-lung-update",
+      "clinicalSignals": ["EGFR-positive metastatic lung cancer", "CNS surveillance in lung cancer", "Thoracic oncology"],
+      "keyTakeaway": "New trial data may change monitoring and sequencing conversations for EGFR-positive metastatic lung cancer.",
+      "content": "This issue reviews new phase III data in EGFR-positive metastatic non-small cell lung cancer, with a focus on intracranial disease control, sequencing after osimertinib, and monitoring strategies for patients with CNS risk. The newsletter also summarizes a short expert discussion on when to reassess molecular status at progression. A final administrative section lists upcoming tumor board dates."
+    },
+    {
+      "id": "newsletter-heart-failure",
+      "title": "Heart Failure Guideline Brief",
+      "source": "CardioPractice Weekly",
+      "publishedAt": "2026-05-08",
+      "readingTime": "6 min",
+      "topic": "Cardiology",
+      "sourceUrl": "https://example.org/newsletters/heart-failure-guideline-brief",
+      "clinicalSignals": ["Heart failure with reduced ejection fraction", "SGLT2 inhibitor use in heart failure", "Iron deficiency in heart failure"],
+      "keyTakeaway": "Updated guidance emphasizes early optimization of foundational therapy and iron deficiency review in HFrEF.",
+      "content": "The guideline brief highlights earlier initiation and dose optimization of foundational therapy in heart failure with reduced ejection fraction. It includes practical notes on SGLT2 inhibitor use, iron deficiency screening, and follow-up after recent decompensation. A short side column covers patient education materials for home weight monitoring."
+    },
+    {
+      "id": "newsletter-diabetes-ckd",
+      "title": "Diabetes and CKD Medication Update",
+      "source": "Metabolic Care Notes",
+      "publishedAt": "2026-05-06",
+      "readingTime": "4 min",
+      "topic": "Endocrinology",
+      "sourceUrl": "https://example.org/newsletters/diabetes-ckd-update",
+      "clinicalSignals": ["Type 2 diabetes with CKD", "Albuminuria risk reduction", "SGLT2 inhibitor kidney protection", "GLP-1 receptor agonist therapy"],
+      "keyTakeaway": "The update summarizes kidney-risk reduction data for diabetes patients with albuminuria and obesity-related metabolic risk.",
+      "content": "This newsletter summarizes medication evidence for type 2 diabetes with chronic kidney disease, including albuminuria risk reduction, SGLT2 inhibitor continuation thresholds, and GLP-1 receptor agonist considerations for patients with obesity. It includes a practical checklist for reviewing kidney and cardiovascular risk at routine follow-up."
+    },
+    {
+      "id": "newsletter-rheum-safety",
+      "title": "Rheumatology Biologic Safety Alert",
+      "source": "Inflammatory Disease Monitor",
+      "publishedAt": "2026-05-04",
+      "readingTime": "5 min",
+      "topic": "Rheumatology",
+      "sourceUrl": "https://example.org/newsletters/rheumatology-biologic-safety",
+      "clinicalSignals": ["Rheumatoid arthritis on JAK inhibitor", "Herpes zoster vaccination", "Infection risk with targeted therapy", "Psoriatic arthritis on IL-17 inhibitor"],
+      "keyTakeaway": "Safety checklist updates may affect targeted therapy reviews in inflammatory arthritis.",
+      "content": "This safety alert reviews infection-risk screening and vaccination timing for patients receiving JAK inhibitors and biologic therapy. It highlights herpes zoster prevention, tuberculosis review, and practical documentation points before therapy switches in rheumatoid arthritis and psoriatic arthritis."
+    },
+    {
+      "id": "newsletter-oncology-support",
+      "title": "Oncology Supportive Care Brief",
+      "source": "Cancer Care Operations",
+      "publishedAt": "2026-05-02",
+      "readingTime": "7 min",
+      "topic": "Oncology support",
+      "sourceUrl": "https://example.org/newsletters/oncology-supportive-care",
+      "clinicalSignals": ["Immune-related adverse event management", "Chemotherapy-induced nausea and vomiting", "Febrile neutropenia prevention", "Antiemetic planning", "Oncology medication safety"],
+      "keyTakeaway": "Supportive-care updates may help teams triage immune-related toxicity and prevent avoidable treatment interruptions.",
+      "content": "This brief covers supportive-care updates for oncology teams, including immune-related adverse-event triage, antiemetic planning for highly emetogenic regimens, and febrile neutropenia prevention workflows. It also includes practical counseling points for patients taking oral targeted therapies."
+    },
+    {
+      "id": "newsletter-admin-congress",
+      "title": "Annual Congress Registration and Parking Update",
+      "source": "Hospital Education Office",
+      "publishedAt": "2026-04-30",
+      "readingTime": "3 min",
+      "topic": "Administration",
+      "sourceUrl": "https://example.org/newsletters/congress-parking-update",
+      "clinicalSignals": ["Conference registration", "Parking logistics", "Badge pickup"],
+      "keyTakeaway": "Administrative logistics for an upcoming congress and badge pickup.",
+      "content": "Registration is open for the annual hospital education congress. The newsletter lists badge pickup windows, parking instructions, room changes, and catering details. It does not include disease-specific, medication-specific, or practice-changing clinical content."
+    }
+  ]
+}
