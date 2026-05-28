@@ -3,6 +3,7 @@ import {
   BrainCircuit,
   CheckCircle2,
   FileText,
+  HelpCircle,
   Lock,
   Newspaper,
   RefreshCcw,
@@ -17,6 +18,7 @@ import {
 import { useMemo, useState } from 'react';
 import { runRelevanceCheck } from './api/relevanceClient';
 import { anonymizePanel } from './domain/anonymization';
+import { OnboardingTour } from './components/OnboardingTour';
 import { data } from './domain/data';
 import type {
   CheckStatus,
@@ -26,7 +28,7 @@ import type {
   RelevanceSummary
 } from './domain/types';
 
-type TabId = 'anonymization' | 'newsletters' | 'decision' | 'app';
+export type TabId = 'anonymization' | 'newsletters' | 'decision' | 'app';
 
 type InboxItem = RelevanceSummary & {
   id: string;
@@ -45,6 +47,16 @@ const tabs: Array<{ id: TabId; label: string; icon: typeof ShieldCheck }> = [
 
 export function App() {
   const [activeTab, setActiveTab] = useState<TabId>('app');
+  const [showTour, setShowTour] = useState(() => {
+    if (typeof window !== 'undefined' && window.navigator?.webdriver) {
+      return false;
+    }
+    try {
+      return localStorage.getItem('onboarding-completed') !== 'true';
+    } catch {
+      return true;
+    }
+  });
   const [selectedHcpId, setSelectedHcpId] = useState(data.hcps[0].id);
   const [selectedNewsletterId, setSelectedNewsletterId] = useState(data.newsletters[0].id);
   const [latestDecision, setLatestDecision] = useState<RelevanceDecision | null>(null);
@@ -139,15 +151,21 @@ export function App() {
             <p>Local proof of concept for HCP Information Triage</p>
           </div>
         </div>
-        <div className="topbar-status">
-          <Lock size={15} />
-          <span>Local backend</span>
-          <span className="status-dot" />
-          <span>Fake data</span>
+        <div className="topbar-right">
+          <button className="help-btn" type="button" onClick={() => setShowTour(true)} title="Start Tour">
+            <HelpCircle size={16} />
+            <span>Help / Tour</span>
+          </button>
+          <div className="topbar-status">
+            <Lock size={15} />
+            <span>Local backend</span>
+            <span className="status-dot" />
+            <span>Fake data</span>
+          </div>
         </div>
       </header>
 
-      <nav className="tabbar" aria-label="Demo sections">
+      <nav className="tabbar" id="navigation-tabs" aria-label="Demo sections">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           return (
@@ -212,6 +230,14 @@ export function App() {
           />
         ) : null}
       </main>
+
+      {showTour && (
+        <OnboardingTour
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          onClose={() => setShowTour(false)}
+        />
+      )}
     </div>
   );
 }
@@ -251,7 +277,7 @@ function HcpAppTab({
     <section className="app-grid">
       <aside className="control-rail">
         <SectionLabel icon={UserRound} label="Selected HCP" />
-        <div className="select-stack">
+        <div className="select-stack" id="hcp-selector">
           {hcps.map((hcp) => (
             <button
               key={hcp.id}
@@ -271,6 +297,7 @@ function HcpAppTab({
         <SectionLabel icon={Newspaper} label="Newsletter" />
         <select
           className="field-select"
+          id="newsletter-selector"
           value={selectedNewsletter.id}
           onChange={(event) => onSelectNewsletter(event.target.value)}
         >
@@ -282,7 +309,7 @@ function HcpAppTab({
         </select>
 
         <div className="action-stack">
-          <button className="primary-action" type="button" onClick={onRunCheck} disabled={isChecking}>
+          <button id="run-check-button" className="primary-action" type="button" onClick={onRunCheck} disabled={isChecking}>
             {isChecking ? <Sparkles size={18} /> : <Send size={18} />}
             <span>{isChecking ? 'Checking relevance' : 'Check relevance'}</span>
           </button>
@@ -514,7 +541,7 @@ function DecisionTab({
 
 function PhoneInbox({ hcp, inbox }: { hcp: Hcp; inbox: InboxItem[] }) {
   return (
-    <div className="phone-frame" aria-label="Smartphone-style HCP Inbox">
+    <div className="phone-frame" id="phone-inbox" aria-label="Smartphone-style HCP Inbox">
       <div className="phone-top">
         <span>09:41</span>
         <span className="phone-notch" />
