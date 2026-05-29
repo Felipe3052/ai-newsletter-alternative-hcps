@@ -3,16 +3,21 @@ import {
   BrainCircuit,
   CheckCircle2,
   FileText,
+  Heart,
   HelpCircle,
   Lock,
+  MessageSquare,
   Newspaper,
   RefreshCcw,
   Send,
+  Settings,
   ShieldCheck,
   Smartphone,
   Sparkles,
   Stethoscope,
+  ThumbsDown,
   UserRound,
+  X,
   XCircle
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -118,10 +123,21 @@ export function App() {
           score: decision.score
         };
 
-        setInboxByHcp((current) => ({
-          ...current,
-          [decision.hcpId]: [nextItem, ...(current[decision.hcpId] ?? [])]
-        }));
+        setInboxByHcp((current) => {
+          const currentInbox = current[decision.hcpId] ?? [];
+          const existsIndex = currentInbox.findIndex(item => item.newsletterId === decision.newsletterId);
+          
+          if (existsIndex >= 0) {
+            const updated = [...currentInbox];
+            updated[existsIndex] = nextItem;
+            return { ...current, [decision.hcpId]: updated };
+          }
+          
+          return {
+            ...current,
+            [decision.hcpId]: [nextItem, ...currentInbox]
+          };
+        });
       }
     } catch (error) {
       setStatus('error');
@@ -321,7 +337,7 @@ function HcpAppTab({
       </aside>
 
       <div className="phone-stage">
-        <PhoneInbox hcp={selectedHcp} inbox={selectedInbox} />
+        <PhoneInbox hcp={selectedHcp} inbox={selectedInbox} onRefresh={onRunCheck} isChecking={isChecking} />
       </div>
 
       <aside className="decision-rail">
@@ -539,7 +555,18 @@ function DecisionTab({
   );
 }
 
-function PhoneInbox({ hcp, inbox }: { hcp: Hcp; inbox: InboxItem[] }) {
+type PhoneTab = 'recaps' | 'inbox' | 'community';
+
+function PhoneInbox({ hcp, inbox, onRefresh, isChecking }: { hcp: Hcp; inbox: InboxItem[]; onRefresh: () => void; isChecking: boolean }) {
+  const [activeTab, setActiveTab] = useState<PhoneTab>('inbox');
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+
+  const tabNames: Record<PhoneTab, string> = {
+    recaps: 'Monthly Recaps',
+    inbox: 'HCP Inbox',
+    community: 'Community Forum'
+  };
+
   return (
     <div className="phone-frame" id="phone-inbox" aria-label="Smartphone-style HCP Inbox">
       <div className="phone-top">
@@ -547,35 +574,121 @@ function PhoneInbox({ hcp, inbox }: { hcp: Hcp; inbox: InboxItem[] }) {
         <span className="phone-notch" />
         <span>5G</span>
       </div>
+      
       <div className="phone-appbar">
-        <div>
-          <small>HCP Inbox</small>
+        <button 
+          className={`avatar-dot accent-${hcp.accent} profile-trigger`} 
+          onClick={() => setIsProfileOpen(true)}
+          type="button"
+          title="View HCP Profile"
+        >
+          {initials(hcp.name)}
+        </button>
+        <div className="appbar-title">
+          <small>{tabNames[activeTab]}</small>
           <strong>{hcp.name}</strong>
         </div>
-        <span className={`avatar-dot accent-${hcp.accent}`}>{initials(hcp.name)}</span>
+        <div style={{ width: 40 }} /> {/* spacer */}
       </div>
-      <div className="phone-content">
-        {inbox.length ? (
-          inbox.map((item) => (
-            <article key={item.id} className="push-card">
-              <div className="push-card-head">
-                <span>{item.mode === 'live' ? 'Live AI' : 'Fallback'}</span>
-                <span>{item.score}/100</span>
+
+      {isProfileOpen && (
+        <div className="phone-profile-overlay">
+          <div className="profile-modal">
+            <div className="profile-modal-head">
+              <button type="button" className="icon-button" aria-label="Settings" title="Settings">
+                <Settings size={20} />
+              </button>
+              <h3>HCP Profile</h3>
+              <button type="button" className="icon-button" onClick={() => setIsProfileOpen(false)} aria-label="Close" title="Close">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="profile-modal-body">
+              <div className={`modal-avatar accent-${hcp.accent}`}>
+                {initials(hcp.name)}
               </div>
-              <h3>{item.title}</h3>
-              <p>{item.body}</p>
-              <small>{item.whyRelevant}</small>
-              <a href={item.sourceUrl}>Open original Newsletter</a>
-            </article>
-          ))
-        ) : (
-          <div className="empty-inbox">
-            <ShieldCheck size={34} />
-            <h3>No pushed updates</h3>
-            <p>The HCP Inbox only receives Push-Worthy Relevance Summaries.</p>
+              <h2>{hcp.name}</h2>
+              <span className="modal-role">{hcp.role}</span>
+              <p className="modal-summary">{hcp.relevanceProfile.summary}</p>
+              <div className="trait-cloud">
+                {hcp.relevanceProfile.traits.map((trait) => (
+                  <span key={trait}>{trait}</span>
+                ))}
+              </div>
+            </div>
           </div>
+        </div>
+      )}
+
+      <div className="phone-content">
+        {activeTab === 'inbox' && (
+          <>
+            <div className="inbox-header">
+              <h3 className="view-title" style={{ margin: 0 }}>Latest Pushes</h3>
+              <button 
+                type="button"
+                className="secondary-action compact-action" 
+                onClick={onRefresh}
+                disabled={isChecking}
+              >
+                {isChecking ? <Sparkles size={14} /> : <RefreshCcw size={14} />} 
+                {isChecking ? 'Checking...' : 'Refresh'}
+              </button>
+            </div>
+            {inbox.length ? (
+              inbox.map((item) => (
+                <article key={item.id} className="push-card">
+                  <div className="push-card-head">
+                    <span>{item.mode === 'live' ? 'Live AI' : 'Fallback'}</span>
+                    <span>{item.score}/100</span>
+                  </div>
+                  <h3>{item.title}</h3>
+                  <p>{item.body}</p>
+                  <small>{item.whyRelevant}</small>
+                  <a href={item.sourceUrl}>Open original Newsletter</a>
+                </article>
+              ))
+            ) : (
+              <div className="empty-inbox">
+                <ShieldCheck size={34} />
+                <h3>No pushed updates</h3>
+                <p>The HCP Inbox only receives Push-Worthy Relevance Summaries.</p>
+              </div>
+            )}
+          </>
         )}
+
+        {activeTab === 'recaps' && <RecapsView />}
+
+        {activeTab === 'community' && <CommunityForum hcp={hcp} />}
       </div>
+
+      <nav className="phone-bottom-nav">
+        <button 
+          type="button" 
+          className={`nav-tab ${activeTab === 'recaps' ? 'active' : ''}`}
+          onClick={() => setActiveTab('recaps')}
+        >
+          <FileText size={22} />
+          <span>Recaps</span>
+        </button>
+        <button 
+          type="button" 
+          className={`nav-tab ${activeTab === 'inbox' ? 'active' : ''}`}
+          onClick={() => setActiveTab('inbox')}
+        >
+          <Send size={22} />
+          <span>Inbox</span>
+        </button>
+        <button 
+          type="button" 
+          className={`nav-tab ${activeTab === 'community' ? 'active' : ''}`}
+          onClick={() => setActiveTab('community')}
+        >
+          <MessageSquare size={22} />
+          <span>Community</span>
+        </button>
+      </nav>
     </div>
   );
 }
@@ -730,4 +843,477 @@ function formatDate(value: string): string {
     day: 'numeric',
     year: 'numeric'
   }).format(new Date(value));
+}
+
+// --- Recaps View Implementation ---
+
+interface Recap {
+  id: string;
+  title: string;
+  summary: string;
+  details: string[];
+}
+
+const initialRecaps: Recap[] = [
+  {
+    id: 'r1',
+    title: 'May 2026 Oncology Highlights',
+    summary: 'A quick summary of the 4 most practice-changing updates pushed to you this month, tailored to your active patient panel.',
+    details: [
+      '• New FDA approval for targeted KRAS inhibitor in late-stage NSCLC.',
+      '• Updated ASCO guidelines for managing immunotoxicity.',
+      '• Supply chain alert: Temporary shortage of standard chemotherapy drug X.',
+      '• Liquid biopsy screening shown to reduce false positives by 15%.'
+    ]
+  },
+  {
+    id: 'r2',
+    title: 'April 2026 Oncology Highlights',
+    summary: 'Your digest of last month\'s 6 key updates, including new ASCO guidelines.',
+    details: [
+      '• Revised EGFR monitoring recommendations: shift to 6-month intervals.',
+      '• Phase 3 trial results for new mAb show significant PFS improvement.',
+      '• Case study: Managing rare adverse effects in combination therapy.',
+      '• Reminder: Annual oncology conference early bird registration.',
+      '• Integration of AI scribes in clinic workflows reduces documentation time by 40%.',
+      '• New clinical guidelines for adjuvant therapy in early-stage breast cancer.'
+    ]
+  }
+];
+
+function RecapsView() {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const toggleExpand = (id: string) => {
+    setExpandedId(expandedId === id ? null : id);
+  };
+
+  return (
+    <div className="recaps-view">
+      <h3 className="view-title">Monthly Recaps</h3>
+      {initialRecaps.map(recap => (
+        <article key={recap.id} className="recap-card">
+          <h4>{recap.title}</h4>
+          <p>{recap.summary}</p>
+          
+          {expandedId === recap.id && (
+            <div className="recap-details">
+              <ul>
+                {recap.details.map((detail, index) => (
+                  <li key={index}>{detail}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          
+          <button 
+            type="button"
+            className="secondary-action compact-action" 
+            onClick={() => toggleExpand(recap.id)}
+          >
+            {expandedId === recap.id ? 'Close Recap' : 'Read Recap'}
+          </button>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+// --- Community Forum Implementation ---
+
+interface Comment {
+  id: string;
+  author: string;
+  authorInitials: string;
+  accent: string;
+  text: string;
+  timestamp: string;
+}
+
+interface Post {
+  id: string;
+  author: string;
+  authorInitials: string;
+  accent: string;
+  timestamp: string;
+  createdAt: number;
+  content: string;
+  likes: number;
+  dislikes: number;
+  userLiked: boolean;
+  userDisliked: boolean;
+  comments: Comment[];
+  showComments?: boolean;
+}
+
+const now = Date.now();
+const hour = 60 * 60 * 1000;
+
+const initialPosts: Post[] = [
+  {
+    id: 'p1',
+    author: 'Dr. David Bauer',
+    authorInitials: 'DB',
+    accent: 'blue',
+    timestamp: '2 hours ago',
+    createdAt: now - 2 * hour,
+    content: 'Has anyone seen the latest phase 3 data on the new targeted therapy? It looks incredibly promising for late-stage patients.',
+    likes: 12,
+    dislikes: 1,
+    userLiked: false,
+    userDisliked: false,
+    comments: [
+      {
+        id: 'c1',
+        author: 'Dr. Sofia Keller',
+        authorInitials: 'SK',
+        accent: 'green',
+        text: 'Yes! The progression-free survival delta was quite impressive. I plan to mention this to my panel tomorrow.',
+        timestamp: '1 hour ago'
+      },
+      {
+        id: 'c2',
+        author: 'Dr. Marc Dubois',
+        authorInitials: 'MD',
+        accent: 'violet',
+        text: 'I am waiting for the subgroup analysis on patients with prior resistance mutations.',
+        timestamp: '45 mins ago'
+      }
+    ]
+  },
+  {
+    id: 'p2',
+    author: 'Dr. Sofia Keller',
+    authorInitials: 'SK',
+    accent: 'green',
+    timestamp: '5 hours ago',
+    createdAt: now - 5 * hour,
+    content: 'Just read the pushed update on EGFR monitoring. Changing our screening protocols tomorrow.',
+    likes: 34,
+    dislikes: 0,
+    userLiked: true,
+    userDisliked: false,
+    comments: [
+      {
+        id: 'c3',
+        author: 'Andrea Rossi',
+        authorInitials: 'AR',
+        accent: 'amber',
+        text: 'Agreed. The new imaging frequency recommendations make a lot of sense.',
+        timestamp: '2 hours ago'
+      }
+    ]
+  },
+  {
+    id: 'p3',
+    author: 'Dr. Michael Chen',
+    authorInitials: 'MC',
+    accent: 'rose',
+    timestamp: '15 mins ago',
+    createdAt: now - 0.25 * hour,
+    content: 'Are there any recent supply chain issues with standard chemotherapy drugs in your regions? We are seeing backorders.',
+    likes: 3,
+    dislikes: 0,
+    userLiked: false,
+    userDisliked: false,
+    comments: []
+  },
+  {
+    id: 'p4',
+    author: 'Dr. Elena Rostova',
+    authorInitials: 'ER',
+    accent: 'amber',
+    timestamp: '4 hours ago',
+    createdAt: now - 4 * hour,
+    content: 'I highly recommend the new webinar on managing immunotoxicity. The case studies were extremely relevant to my current patients.',
+    likes: 45,
+    dislikes: 2,
+    userLiked: false,
+    userDisliked: false,
+    comments: []
+  },
+  {
+    id: 'p5',
+    author: 'Dr. Thomas Wright',
+    authorInitials: 'TW',
+    accent: 'indigo',
+    timestamp: '10 hours ago',
+    createdAt: now - 10 * hour,
+    content: 'The recent FDA approval for the new KRAS inhibitor is a game changer for our clinic.',
+    likes: 120,
+    dislikes: 5,
+    userLiked: true,
+    userDisliked: false,
+    comments: []
+  },
+  {
+    id: 'p6',
+    author: 'Dr. Sarah Jenkins',
+    authorInitials: 'SJ',
+    accent: 'violet',
+    timestamp: '1 day ago',
+    createdAt: now - 24 * hour,
+    content: 'Has anyone integrated the new liquid biopsy screening into their standard workflows? Looking for best practices.',
+    likes: 15,
+    dislikes: 0,
+    userLiked: false,
+    userDisliked: false,
+    comments: []
+  },
+  {
+    id: 'p7',
+    author: 'Dr. Liam O\'Connor',
+    authorInitials: 'LO',
+    accent: 'green',
+    timestamp: '1 day ago',
+    createdAt: now - 25 * hour,
+    content: 'A patient asked me about an experimental diet they saw on TikTok... How do you handle medical misinformation in the clinic?',
+    likes: 89,
+    dislikes: 1,
+    userLiked: false,
+    userDisliked: false,
+    comments: []
+  },
+  {
+    id: 'p8',
+    author: 'Dr. Aisha Patel',
+    authorInitials: 'AP',
+    accent: 'blue',
+    timestamp: '2 days ago',
+    createdAt: now - 48 * hour,
+    content: 'Just published a small case series on rare adverse effects. Happy to share the preprint if anyone is interested.',
+    likes: 56,
+    dislikes: 0,
+    userLiked: false,
+    userDisliked: false,
+    comments: []
+  },
+  {
+    id: 'p9',
+    author: 'Dr. Wei Zhang',
+    authorInitials: 'WZ',
+    accent: 'teal',
+    timestamp: '2 days ago',
+    createdAt: now - 50 * hour,
+    content: 'Question: What is the consensus on off-label prescribing for the new mAb when insurance denies coverage?',
+    likes: 22,
+    dislikes: 4,
+    userLiked: false,
+    userDisliked: false,
+    comments: []
+  },
+  {
+    id: 'p10',
+    author: 'Dr. Chloe Martin',
+    authorInitials: 'CM',
+    accent: 'rose',
+    timestamp: '3 days ago',
+    createdAt: now - 72 * hour,
+    content: 'Reminder to all: the annual conference early bird registration ends tomorrow!',
+    likes: 5,
+    dislikes: 12,
+    userLiked: false,
+    userDisliked: true,
+    comments: []
+  },
+  {
+    id: 'p11',
+    author: 'Dr. Robert Kim',
+    authorInitials: 'RK',
+    accent: 'indigo',
+    timestamp: '4 days ago',
+    createdAt: now - 96 * hour,
+    content: 'I feel like I am drowning in paperwork this week. Does anyone use AI scribes effectively?',
+    likes: 210,
+    dislikes: 2,
+    userLiked: false,
+    userDisliked: false,
+    comments: []
+  },
+  {
+    id: 'p12',
+    author: 'Dr. Olivia Brown',
+    authorInitials: 'OB',
+    accent: 'amber',
+    timestamp: '1 week ago',
+    createdAt: now - 168 * hour,
+    content: 'The new clinical guidelines are finally out! Thoughts?',
+    likes: 312,
+    dislikes: 8,
+    userLiked: false,
+    userDisliked: false,
+    comments: []
+  }
+];
+
+function CommunityForum({ hcp }: { hcp: Hcp }) {
+  const [posts, setPosts] = useState<Post[]>(initialPosts);
+  const [newPostContent, setNewPostContent] = useState('');
+  const [sortBy, setSortBy] = useState<'recent' | 'popular'>('recent');
+
+  const handlePostSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPostContent.trim()) return;
+
+    const newPost: Post = {
+      id: `p${Date.now()}`,
+      author: hcp.name,
+      authorInitials: initials(hcp.name),
+      accent: hcp.accent,
+      timestamp: 'Just now',
+      createdAt: Date.now(),
+      content: newPostContent.trim(),
+      likes: 0,
+      dislikes: 0,
+      userLiked: false,
+      userDisliked: false,
+      comments: []
+    };
+
+    setPosts([newPost, ...posts]);
+    setNewPostContent('');
+  };
+
+  const toggleLike = (postId: string) => {
+    setPosts(posts.map(p => {
+      if (p.id !== postId) return p;
+      if (p.userLiked) {
+        return { ...p, userLiked: false, likes: p.likes - 1 };
+      }
+      return { 
+        ...p, 
+        userLiked: true, 
+        likes: p.likes + 1,
+        userDisliked: false,
+        dislikes: p.userDisliked ? p.dislikes - 1 : p.dislikes
+      };
+    }));
+  };
+
+  const toggleDislike = (postId: string) => {
+    setPosts(posts.map(p => {
+      if (p.id !== postId) return p;
+      if (p.userDisliked) {
+        return { ...p, userDisliked: false, dislikes: p.dislikes - 1 };
+      }
+      return { 
+        ...p, 
+        userDisliked: true, 
+        dislikes: p.dislikes + 1,
+        userLiked: false,
+        likes: p.userLiked ? p.likes - 1 : p.likes
+      };
+    }));
+  };
+
+  const toggleComments = (postId: string) => {
+    setPosts(posts.map(p => 
+      p.id === postId ? { ...p, showComments: !p.showComments } : p
+    ));
+  };
+
+  const sortedPosts = [...posts].sort((a, b) => {
+    if (sortBy === 'recent') {
+      return b.createdAt - a.createdAt;
+    } else {
+      return b.likes - a.likes;
+    }
+  });
+
+  return (
+    <div className="community-view">
+      <div className="forum-header">
+        <h3 className="view-title" style={{ marginBottom: 0 }}>HCP Community Forum</h3>
+        <div className="forum-sort">
+          <button 
+            type="button" 
+            className={sortBy === 'recent' ? 'active-sort' : ''} 
+            onClick={() => setSortBy('recent')}
+          >
+            New
+          </button>
+          <button 
+            type="button" 
+            className={sortBy === 'popular' ? 'active-sort' : ''} 
+            onClick={() => setSortBy('popular')}
+          >
+            Top
+          </button>
+        </div>
+      </div>
+      
+      <form className="post-composer" onSubmit={handlePostSubmit}>
+        <div className="composer-header">
+          <span className={`avatar-dot accent-${hcp.accent}`}>{initials(hcp.name)}</span>
+          <strong>Post as {hcp.name}</strong>
+        </div>
+        <textarea 
+          placeholder="Share a clinical insight or ask a question..." 
+          value={newPostContent}
+          onChange={(e) => setNewPostContent(e.target.value)}
+          rows={3}
+        />
+        <div className="composer-footer">
+          <button type="submit" className="primary-action compact-action" disabled={!newPostContent.trim()}>
+            Post to Forum
+          </button>
+        </div>
+      </form>
+
+      <div className="forum-feed">
+        {sortedPosts.map(post => (
+          <article key={post.id} className="community-post">
+            <div className="post-author">
+              <span className={`avatar-dot accent-${post.accent}`}>{post.authorInitials}</span>
+              <div>
+                <strong>{post.author}</strong>
+                <small>{post.timestamp}</small>
+              </div>
+            </div>
+            <p>{post.content}</p>
+            <div className="community-actions">
+              <button 
+                type="button" 
+                className={post.userLiked ? 'action-active-like' : ''} 
+                onClick={() => toggleLike(post.id)}
+              >
+                <Heart size={16} fill={post.userLiked ? 'currentColor' : 'none'} /> {post.likes}
+              </button>
+              <button 
+                type="button" 
+                className={post.userDisliked ? 'action-active-dislike' : ''} 
+                onClick={() => toggleDislike(post.id)}
+              >
+                <ThumbsDown size={16} fill={post.userDisliked ? 'currentColor' : 'none'} /> {post.dislikes}
+              </button>
+              <button type="button" onClick={() => toggleComments(post.id)}>
+                <MessageSquare size={16} /> {post.comments.length} Comments
+              </button>
+            </div>
+            
+            {post.showComments && (
+              <div className="comments-section">
+                {post.comments.length === 0 ? (
+                  <p className="no-comments">No comments yet. Be the first to share your thoughts!</p>
+                ) : (
+                  post.comments.map(comment => (
+                    <div key={comment.id} className="comment-item">
+                      <span className={`avatar-dot accent-${comment.accent} small-avatar`}>{comment.authorInitials}</span>
+                      <div className="comment-content">
+                        <div className="comment-author">
+                          <strong>{comment.author}</strong>
+                          <small>{comment.timestamp}</small>
+                        </div>
+                        <p>{comment.text}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </article>
+        ))}
+      </div>
+    </div>
+  );
 }
