@@ -43,6 +43,15 @@ type InboxItem = RelevanceSummary & {
   score: number;
 };
 
+type NewsletterBroadcastRun = {
+  newsletterId: string;
+  checkedCount: number;
+  totalCount: number;
+  activeHcpName: string | null;
+  results: RelevanceDecision[];
+  error?: string;
+};
+
 const tabs: Array<{ id: TabId; label: string; icon: typeof ShieldCheck }> = [
   { id: 'anonymization', label: 'Anonymization', icon: ShieldCheck },
   { id: 'newsletters', label: 'Newsletters', icon: Newspaper },
@@ -70,6 +79,7 @@ export function App() {
   const [statusMessage, setStatusMessage] = useState('Ready for a Relevance Check');
   const [isChecking, setIsChecking] = useState(false);
   const [inboxByHcp, setInboxByHcp] = useState<Record<string, InboxItem[]>>({});
+  const [newsletterBroadcastRun, setNewsletterBroadcastRun] = useState<NewsletterBroadcastRun | null>(null);
 
   const selectedHcp = useMemo(
     () => data.hcps.find((hcp) => hcp.id === selectedHcpId) ?? data.hcps[0],
@@ -83,6 +93,35 @@ export function App() {
   );
   const anonymizedProfiles = useMemo(() => anonymizePanel(selectedHcp), [selectedHcp]);
   const selectedInbox = inboxByHcp[selectedHcp.id] ?? [];
+
+  const upsertPushDecision = (decision: RelevanceDecision) => {
+    if (!decision.push || !decision.summary) return;
+
+    const nextItem: InboxItem = {
+      ...decision.summary,
+      id: decision.id,
+      newsletterId: decision.newsletterId,
+      generatedAt: decision.generatedAt,
+      mode: decision.mode,
+      score: decision.score
+    };
+
+    setInboxByHcp((current) => {
+      const currentInbox = current[decision.hcpId] ?? [];
+      const existsIndex = currentInbox.findIndex((item) => item.newsletterId === decision.newsletterId);
+
+      if (existsIndex >= 0) {
+        const updated = [...currentInbox];
+        updated[existsIndex] = nextItem;
+        return { ...current, [decision.hcpId]: updated };
+      }
+
+      return {
+        ...current,
+        [decision.hcpId]: [nextItem, ...currentInbox]
+      };
+    });
+  };
 
   const handleRunCheck = async () => {
     setIsChecking(true);
@@ -113,35 +152,110 @@ export function App() {
         }
       });
 
-      if (decision.push && decision.summary) {
-        const nextItem: InboxItem = {
-          ...decision.summary,
-          id: decision.id,
-          newsletterId: decision.newsletterId,
-          generatedAt: decision.generatedAt,
-          mode: decision.mode,
-          score: decision.score
-        };
-
-        setInboxByHcp((current) => {
-          const currentInbox = current[decision.hcpId] ?? [];
-          const existsIndex = currentInbox.findIndex(item => item.newsletterId === decision.newsletterId);
-          
-          if (existsIndex >= 0) {
-            const updated = [...currentInbox];
-            updated[existsIndex] = nextItem;
-            return { ...current, [decision.hcpId]: updated };
-          }
-          
-          return {
-            ...current,
-            [decision.hcpId]: [nextItem, ...currentInbox]
-          };
-        });
-      }
+      upsertPushDecision(decision);
     } catch (error) {
       setStatus('error');
       setStatusMessage(error instanceof Error ? error.message : 'Relevance Check failed');
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
+  const handleRunNewsletterBroadcast = async () => {
+    const newsletter = selectedNewsletter;
+    const totalCount = data.hcps.length;
+    const completedDecisions: RelevanceDecision[] = [];
+
+    setIsChecking(true);
+    setLatestDecision(null);
+    setStreamText('');
+    setStatus('reading');
+    setStatusMessage(`Preparing ${newsletter.title} for all HCPs`);
+    setNewsletterBroadcastRun({
+      newsletterId: newsletter.id,
+      checkedCount: 0,
+      totalCount,
+      activeHcpName: null,
+      results: []
+    });
+
+    try {
+      for (const hcp of data.hcps) {
+        setStreamText(`Checking ${hcp.name} against "${newsletter.title}"...\n`);
+        setStatus('comparing');
+        setStatusMessage(`Checking ${hcp.name}'s HCP Relevance Profile`);
+        setNewsletterBroadcastRun((current) =>
+          current && current.newsletterId === newsletter.id
+            ? { ...current, activeHcpName: hcp.name }
+            : current
+        );
+
+        const decision = await runRelevanceCheck({
+          hcpId: hcp.id,
+          newsletterId: newsletter.id,
+          onEvent: (event) => {
+            if (event.type === 'status') {
+              setStatus(event.status);
+              setStatusMessage(`${hcp.name}: ${event.message}`);
+            }
+
+            if (event.type === 'delta') {
+              setStreamText((current) => current + event.text);
+            }
+
+            if (event.type === 'decision') {
+              setLatestDecision(event.decision);
+            }
+          }
+        });
+
+        completedDecisions.push(decision);
+        upsertPushDecision(decision);
+
+        setNewsletterBroadcastRun((current) =>
+          current && current.newsletterId === newsletter.id
+            ? {
+                ...current,
+                checkedCount: completedDecisions.length,
+                activeHcpName: completedDecisions.length === totalCount ? null : current.activeHcpName,
+                results: [...completedDecisions]
+              }
+            : current
+        );
+      }
+
+      const pushCount = completedDecisions.filter((decision) => decision.push).length;
+      const firstPushedDecision = completedDecisions.find((decision) => decision.push) ?? null;
+      const decisionToReview = firstPushedDecision ?? completedDecisions[completedDecisions.length - 1] ?? null;
+
+      if (decisionToReview) {
+        setLatestDecision(decisionToReview);
+      }
+
+      if (firstPushedDecision) {
+        const pushedHcp =
+          data.hcps.find((hcp) => hcp.id === firstPushedDecision.hcpId) ?? data.hcps[0];
+        setSelectedHcpId(firstPushedDecision.hcpId);
+        setStreamText(
+          [
+            `Broadcast complete: ${pushCount} push${pushCount === 1 ? '' : 'es'} sent from "${newsletter.title}".`,
+            `First pushed recipient: ${pushedHcp.name}.`,
+            `Push summary: ${firstPushedDecision.summary?.body ?? firstPushedDecision.rationale}`
+          ].join('\n')
+        );
+      } else {
+        setStreamText(`Broadcast complete: no HCP profiles received a push for "${newsletter.title}".`);
+      }
+
+      setStatus('complete');
+      setStatusMessage(`${pushCount} push${pushCount === 1 ? '' : 'es'} sent from this Newsletter`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Newsletter relevance check failed';
+      setStatus('error');
+      setStatusMessage(message);
+      setNewsletterBroadcastRun((current) =>
+        current && current.newsletterId === newsletter.id ? { ...current, error: message } : current
+      );
     } finally {
       setIsChecking(false);
     }
@@ -153,6 +267,7 @@ export function App() {
     setStreamText('');
     setStatus('idle');
     setStatusMessage('Ready for a Relevance Check');
+    setNewsletterBroadcastRun(null);
   };
 
   return (
@@ -210,9 +325,14 @@ export function App() {
 
         {activeTab === 'newsletters' ? (
           <NewslettersTab
+            hcps={data.hcps}
             newsletters={data.newsletters}
             selectedNewsletter={selectedNewsletter}
+            broadcastRun={newsletterBroadcastRun}
+            streamText={streamText}
+            isChecking={isChecking}
             onSelectNewsletter={setSelectedNewsletterId}
+            onRunNewsletterCheck={handleRunNewsletterBroadcast}
           />
         ) : null}
 
@@ -429,14 +549,33 @@ function AnonymizationTab({
 }
 
 function NewslettersTab({
+  hcps,
   newsletters,
   selectedNewsletter,
-  onSelectNewsletter
+  broadcastRun,
+  streamText,
+  isChecking,
+  onSelectNewsletter,
+  onRunNewsletterCheck
 }: {
+  hcps: Hcp[];
   newsletters: Newsletter[];
   selectedNewsletter: Newsletter;
+  broadcastRun: NewsletterBroadcastRun | null;
+  streamText: string;
+  isChecking: boolean;
   onSelectNewsletter: (newsletterId: string) => void;
+  onRunNewsletterCheck: () => void;
 }) {
+  const runForSelectedNewsletter =
+    broadcastRun?.newsletterId === selectedNewsletter.id ? broadcastRun : null;
+  const isBroadcastingSelected =
+    isChecking &&
+    Boolean(runForSelectedNewsletter) &&
+    runForSelectedNewsletter?.checkedCount !== runForSelectedNewsletter?.totalCount;
+  const checkedCount = runForSelectedNewsletter?.checkedCount ?? 0;
+  const totalCount = runForSelectedNewsletter?.totalCount ?? hcps.length;
+
   return (
     <section className="newsletter-layout">
       <div className="section-heading">
@@ -444,6 +583,20 @@ function NewslettersTab({
           <h2>Curated Newsletter inputs</h2>
           <p>Each Newsletter is evaluated as a complete communication, then only the relevant part is summarized.</p>
         </div>
+        <button
+          id="newsletter-check-all-button"
+          className="primary-action newsletter-broadcast-action"
+          type="button"
+          onClick={onRunNewsletterCheck}
+          disabled={isChecking}
+        >
+          {isBroadcastingSelected ? <Sparkles size={18} /> : <Send size={18} />}
+          <span>
+            {isBroadcastingSelected
+              ? `Checking ${Math.min(checkedCount + 1, totalCount)}/${totalCount}`
+              : 'Check relevance for all HCPs'}
+          </span>
+        </button>
       </div>
 
       <div className="newsletter-grid">
@@ -454,6 +607,7 @@ function NewslettersTab({
               type="button"
               className={`newsletter-row ${newsletter.id === selectedNewsletter.id ? 'is-selected' : ''}`}
               onClick={() => onSelectNewsletter(newsletter.id)}
+              disabled={isChecking}
             >
               <span>{newsletter.topic}</span>
               <strong>{newsletter.title}</strong>
@@ -480,8 +634,117 @@ function NewslettersTab({
             Original Newsletter link
           </a>
         </article>
+
+        <NewsletterBroadcastPanel
+          hcps={hcps}
+          selectedNewsletter={selectedNewsletter}
+          broadcastRun={runForSelectedNewsletter}
+          streamText={streamText}
+          isChecking={isBroadcastingSelected}
+        />
       </div>
     </section>
+  );
+}
+
+function NewsletterBroadcastPanel({
+  hcps,
+  selectedNewsletter,
+  broadcastRun,
+  streamText,
+  isChecking
+}: {
+  hcps: Hcp[];
+  selectedNewsletter: Newsletter;
+  broadcastRun: NewsletterBroadcastRun | null;
+  streamText: string;
+  isChecking: boolean;
+}) {
+  const resultsByHcpId = new Map(
+    broadcastRun?.results.map((decision) => [decision.hcpId, decision]) ?? []
+  );
+  const pushCount = broadcastRun?.results.filter((decision) => decision.push).length ?? 0;
+  const noPushCount = broadcastRun ? broadcastRun.checkedCount - pushCount : 0;
+
+  return (
+    <aside className="broadcast-panel">
+      <SectionLabel icon={Send} label="Newsletter distribution" />
+
+      <div className="broadcast-summary">
+        <strong>{broadcastRun ? `${pushCount} push${pushCount === 1 ? '' : 'es'} ready` : 'Not checked yet'}</strong>
+        <span>
+          {broadcastRun
+            ? `${broadcastRun.checkedCount}/${broadcastRun.totalCount} HCP profiles checked, ${noPushCount} no-push`
+            : `Run this Newsletter against all ${hcps.length} HCP Relevance Profiles.`}
+        </span>
+      </div>
+
+      {broadcastRun?.error ? (
+        <div className="broadcast-error">
+          <XCircle size={17} />
+          <span>{broadcastRun.error}</span>
+        </div>
+      ) : null}
+
+      <div className="broadcast-live-box">
+        <span>{isChecking ? `Live generation: ${broadcastRun?.activeHcpName}` : 'Latest generation'}</span>
+        <p>{streamText || `No generated result yet for ${selectedNewsletter.title}.`}</p>
+      </div>
+
+      <div className="distribution-list">
+        {hcps.map((hcp) => {
+          const decision = resultsByHcpId.get(hcp.id);
+          const isActive = broadcastRun?.activeHcpName === hcp.name && isChecking;
+
+          return (
+            <article
+              key={hcp.id}
+              className={`distribution-row accent-${hcp.accent} ${decision?.push ? 'is-push' : ''} ${isActive ? 'is-active' : ''}`}
+            >
+              <div className="distribution-head">
+                <span className="choice-avatar">{initials(hcp.name)}</span>
+                <div>
+                  <strong>{hcp.name}</strong>
+                  <small>{hcp.role}</small>
+                </div>
+              </div>
+
+              <div className="distribution-outcome">
+                {isActive ? (
+                  <>
+                    <Sparkles size={16} />
+                    <span>Checking now</span>
+                  </>
+                ) : decision ? (
+                  decision.push ? (
+                    <>
+                      <CheckCircle2 size={16} />
+                      <span>Push sent | {decision.score}/100</span>
+                    </>
+                  ) : (
+                    <>
+                      <XCircle size={16} />
+                      <span>No push | {decision.score}/100</span>
+                    </>
+                  )
+                ) : (
+                  <>
+                    <BrainCircuit size={16} />
+                    <span>Waiting</span>
+                  </>
+                )}
+              </div>
+
+              {decision?.summary ? (
+                <p>{decision.summary.body}</p>
+              ) : decision ? (
+                <p>{decision.rationale}</p>
+              ) : null}
+            </article>
+          );
+        })}
+      </div>
+    </aside>
   );
 }
 

@@ -125,24 +125,7 @@ async function handleRelevanceCheck(req, res) {
 }
 
 async function runLiveRelevanceCheck({ hcp, newsletter, send }) {
-  send({ type: 'status', status: 'generating', message: 'Generating a live rationale and summary' });
-
-  const narrativePrompt = [
-    'You are generating visible text for a healthcare newsletter relevance demo.',
-    'This is Information Triage only, not clinical advice.',
-    'Use only anonymized clinical traits. Do not mention individual patients.',
-    'Write 2 short lines: first the relevance rationale, then the push summary if push-worthy or no-push reason if not.',
-    '',
-    `HCP: ${hcp.name}, ${hcp.role}`,
-    `HCP Relevance Profile: ${hcp.relevanceProfile.summary}`,
-    `Traits: ${hcp.relevanceProfile.traits.join('; ')}`,
-    '',
-    `Newsletter title: ${newsletter.title}`,
-    `Newsletter topic: ${newsletter.topic}`,
-    `Newsletter content: ${newsletter.content}`
-  ].join('\n');
-
-  await streamOpenAIText(narrativePrompt, (text) => send({ type: 'delta', text }));
+  send({ type: 'status', status: 'generating', message: 'Generating a live relevance decision' });
 
   const structuredPrompt = [
     'Return a JSON decision for this relevance check.',
@@ -168,9 +151,9 @@ async function runLiveRelevanceCheck({ hcp, newsletter, send }) {
     ? structured.matchedClinicalTraits.filter((trait) => typeof trait === 'string').slice(0, 6)
     : [];
   const push = Boolean(structured.push);
-
-  return {
-    id: `${hcp.id}:${newsletter.id}:${new Date().toISOString()}`,
+  const generatedAt = new Date().toISOString();
+  const decision = {
+    id: `${hcp.id}:${newsletter.id}:${generatedAt}`,
     hcpId: hcp.id,
     newsletterId: newsletter.id,
     mode: 'live',
@@ -189,8 +172,37 @@ async function runLiveRelevanceCheck({ hcp, newsletter, send }) {
           sourceUrl: newsletter.sourceUrl
         }
       : null,
-    generatedAt: new Date().toISOString()
+    generatedAt
   };
+
+  send({ type: 'status', status: 'generating', message: 'Streaming the final rationale and push payload' });
+
+  const narrativePrompt = [
+    'You are generating visible text for a healthcare newsletter relevance demo.',
+    'This is Information Triage only, not clinical advice.',
+    'Use only anonymized clinical traits. Do not mention individual patients.',
+    'The structured decision below is already final. Do not contradict it.',
+    'Write 2 short lines: first the relevance rationale, then the push summary if the outcome is PUSH or the no-push reason if the outcome is DO NOT PUSH.',
+    '',
+    `Final outcome: ${decision.push ? 'PUSH' : 'DO NOT PUSH'}`,
+    `Final score: ${decision.score}/100`,
+    `Final rationale: ${decision.rationale}`,
+    `Matched traits: ${decision.matchedClinicalTraits.join('; ') || 'none'}`,
+    `Push title: ${decision.summary?.title ?? 'none'}`,
+    `Push body: ${decision.summary?.body ?? 'none'}`,
+    `Why relevant: ${decision.summary?.whyRelevant ?? 'none'}`,
+    '',
+    `HCP: ${hcp.name}, ${hcp.role}`,
+    `HCP Relevance Profile: ${hcp.relevanceProfile.summary}`,
+    '',
+    `Newsletter title: ${newsletter.title}`,
+    `Newsletter topic: ${newsletter.topic}`,
+    `Newsletter content: ${newsletter.content}`
+  ].join('\n');
+
+  await streamOpenAIText(narrativePrompt, (text) => send({ type: 'delta', text }));
+
+  return decision;
 }
 
 async function streamOpenAIText(prompt, onDelta) {
