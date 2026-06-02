@@ -3,16 +3,22 @@ import {
   BrainCircuit,
   CheckCircle2,
   FileText,
+  Heart,
   HelpCircle,
   Lock,
+  MessageSquare,
   Newspaper,
+  Plus,
   RefreshCcw,
   Send,
+  Settings,
   ShieldCheck,
   Smartphone,
   Sparkles,
   Stethoscope,
+  ThumbsDown,
   UserRound,
+  X,
   XCircle
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -36,6 +42,35 @@ type InboxItem = RelevanceSummary & {
   generatedAt: string;
   mode: 'live' | 'fallback';
   score: number;
+};
+
+type NewsletterBroadcastRun = {
+  newsletterId: string;
+  checkedCount: number;
+  totalCount: number;
+  activeHcpName: string | null;
+  results: RelevanceDecision[];
+  error?: string;
+};
+
+type HcpProfileOverrides = Record<string, Hcp['relevanceProfile']>;
+
+type CustomNewsletterDraft = {
+  title: string;
+  source: string;
+  topic: string;
+  keyTakeaway: string;
+  content: string;
+};
+
+const customNewsletterId = 'newsletter-custom-upload';
+
+const emptyCustomNewsletterDraft: CustomNewsletterDraft = {
+  title: '',
+  source: 'Tester upload',
+  topic: '',
+  keyTakeaway: '',
+  content: ''
 };
 
 const tabs: Array<{ id: TabId; label: string; icon: typeof ShieldCheck }> = [
@@ -65,19 +100,72 @@ export function App() {
   const [statusMessage, setStatusMessage] = useState('Ready for a Relevance Check');
   const [isChecking, setIsChecking] = useState(false);
   const [inboxByHcp, setInboxByHcp] = useState<Record<string, InboxItem[]>>({});
+  const [newsletterBroadcastRun, setNewsletterBroadcastRun] = useState<NewsletterBroadcastRun | null>(null);
+  const [hcpProfileOverrides, setHcpProfileOverrides] = useState<HcpProfileOverrides>({});
+  const [customNewsletterDraft, setCustomNewsletterDraft] =
+    useState<CustomNewsletterDraft>(emptyCustomNewsletterDraft);
+
+  const hcps = useMemo(
+    () =>
+      data.hcps.map((hcp) =>
+        hcpProfileOverrides[hcp.id]
+          ? { ...hcp, relevanceProfile: hcpProfileOverrides[hcp.id] }
+          : hcp
+      ),
+    [hcpProfileOverrides]
+  );
+
+  const customNewsletter = useMemo(
+    () => buildCustomNewsletter(customNewsletterDraft),
+    [customNewsletterDraft]
+  );
+
+  const newsletters = useMemo(
+    () => (customNewsletter ? [customNewsletter, ...data.newsletters] : data.newsletters),
+    [customNewsletter]
+  );
 
   const selectedHcp = useMemo(
-    () => data.hcps.find((hcp) => hcp.id === selectedHcpId) ?? data.hcps[0],
-    [selectedHcpId]
+    () => hcps.find((hcp) => hcp.id === selectedHcpId) ?? hcps[0],
+    [hcps, selectedHcpId]
   );
   const selectedNewsletter = useMemo(
     () =>
-      data.newsletters.find((newsletter) => newsletter.id === selectedNewsletterId) ??
-      data.newsletters[0],
-    [selectedNewsletterId]
+      newsletters.find((newsletter) => newsletter.id === selectedNewsletterId) ??
+      newsletters[0],
+    [newsletters, selectedNewsletterId]
   );
   const anonymizedProfiles = useMemo(() => anonymizePanel(selectedHcp), [selectedHcp]);
   const selectedInbox = inboxByHcp[selectedHcp.id] ?? [];
+
+  const upsertPushDecision = (decision: RelevanceDecision) => {
+    if (!decision.push || !decision.summary) return;
+
+    const nextItem: InboxItem = {
+      ...decision.summary,
+      id: decision.id,
+      newsletterId: decision.newsletterId,
+      generatedAt: decision.generatedAt,
+      mode: decision.mode,
+      score: decision.score
+    };
+
+    setInboxByHcp((current) => {
+      const currentInbox = current[decision.hcpId] ?? [];
+      const existsIndex = currentInbox.findIndex((item) => item.newsletterId === decision.newsletterId);
+
+      if (existsIndex >= 0) {
+        const updated = [...currentInbox];
+        updated[existsIndex] = nextItem;
+        return { ...current, [decision.hcpId]: updated };
+      }
+
+      return {
+        ...current,
+        [decision.hcpId]: [nextItem, ...currentInbox]
+      };
+    });
+  };
 
   const handleRunCheck = async () => {
     setIsChecking(true);
@@ -90,6 +178,8 @@ export function App() {
       const decision = await runRelevanceCheck({
         hcpId: selectedHcp.id,
         newsletterId: selectedNewsletter.id,
+        hcp: selectedHcp,
+        newsletter: selectedNewsletter,
         onEvent: (event) => {
           if (event.type === 'status') {
             setStatus(event.status);
@@ -108,21 +198,7 @@ export function App() {
         }
       });
 
-      if (decision.push && decision.summary) {
-        const nextItem: InboxItem = {
-          ...decision.summary,
-          id: decision.id,
-          newsletterId: decision.newsletterId,
-          generatedAt: decision.generatedAt,
-          mode: decision.mode,
-          score: decision.score
-        };
-
-        setInboxByHcp((current) => ({
-          ...current,
-          [decision.hcpId]: [nextItem, ...(current[decision.hcpId] ?? [])]
-        }));
-      }
+      upsertPushDecision(decision);
     } catch (error) {
       setStatus('error');
       setStatusMessage(error instanceof Error ? error.message : 'Relevance Check failed');
@@ -131,12 +207,143 @@ export function App() {
     }
   };
 
+  const handleRunNewsletterBroadcast = async () => {
+    const newsletter = selectedNewsletter;
+    const totalCount = hcps.length;
+    const completedDecisions: RelevanceDecision[] = [];
+
+    setIsChecking(true);
+    setLatestDecision(null);
+    setStreamText('');
+    setStatus('reading');
+    setStatusMessage(`Preparing ${newsletter.title} for all HCPs`);
+    setNewsletterBroadcastRun({
+      newsletterId: newsletter.id,
+      checkedCount: 0,
+      totalCount,
+      activeHcpName: null,
+      results: []
+    });
+
+    try {
+      for (const hcp of hcps) {
+        setStreamText(`Checking ${hcp.name} against "${newsletter.title}"...\n`);
+        setStatus('comparing');
+        setStatusMessage(`Checking ${hcp.name}'s HCP Relevance Profile`);
+        setNewsletterBroadcastRun((current) =>
+          current && current.newsletterId === newsletter.id
+            ? { ...current, activeHcpName: hcp.name }
+            : current
+        );
+
+        const decision = await runRelevanceCheck({
+          hcpId: hcp.id,
+          newsletterId: newsletter.id,
+          hcp,
+          newsletter,
+          onEvent: (event) => {
+            if (event.type === 'status') {
+              setStatus(event.status);
+              setStatusMessage(`${hcp.name}: ${event.message}`);
+            }
+
+            if (event.type === 'delta') {
+              setStreamText((current) => current + event.text);
+            }
+
+            if (event.type === 'decision') {
+              setLatestDecision(event.decision);
+            }
+          }
+        });
+
+        completedDecisions.push(decision);
+        upsertPushDecision(decision);
+
+        setNewsletterBroadcastRun((current) =>
+          current && current.newsletterId === newsletter.id
+            ? {
+                ...current,
+                checkedCount: completedDecisions.length,
+                activeHcpName: completedDecisions.length === totalCount ? null : current.activeHcpName,
+                results: [...completedDecisions]
+              }
+            : current
+        );
+      }
+
+      const pushCount = completedDecisions.filter((decision) => decision.push).length;
+      const firstPushedDecision = completedDecisions.find((decision) => decision.push) ?? null;
+      const decisionToReview = firstPushedDecision ?? completedDecisions[completedDecisions.length - 1] ?? null;
+
+      if (decisionToReview) {
+        setLatestDecision(decisionToReview);
+      }
+
+      if (firstPushedDecision) {
+        const pushedHcp =
+          hcps.find((hcp) => hcp.id === firstPushedDecision.hcpId) ?? hcps[0];
+        setSelectedHcpId(firstPushedDecision.hcpId);
+        setStreamText(
+          [
+            `Broadcast complete: ${pushCount} push${pushCount === 1 ? '' : 'es'} sent from "${newsletter.title}".`,
+            `First pushed recipient: ${pushedHcp.name}.`,
+            `Push summary: ${firstPushedDecision.summary?.body ?? firstPushedDecision.rationale}`
+          ].join('\n')
+        );
+      } else {
+        setStreamText(`Broadcast complete: no HCP profiles received a push for "${newsletter.title}".`);
+      }
+
+      setStatus('complete');
+      setStatusMessage(`${pushCount} push${pushCount === 1 ? '' : 'es'} sent from this Newsletter`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Newsletter relevance check failed';
+      setStatus('error');
+      setStatusMessage(message);
+      setNewsletterBroadcastRun((current) =>
+        current && current.newsletterId === newsletter.id ? { ...current, error: message } : current
+      );
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
+  const handleUpdateHcpProfile = (hcpId: string, profile: Hcp['relevanceProfile']) => {
+    setHcpProfileOverrides((current) => ({
+      ...current,
+      [hcpId]: profile
+    }));
+  };
+
+  const handleResetHcpProfile = (hcpId: string) => {
+    setHcpProfileOverrides((current) => {
+      const next = { ...current };
+      delete next[hcpId];
+      return next;
+    });
+  };
+
+  const handleUpdateCustomNewsletterDraft = (patch: Partial<CustomNewsletterDraft>) => {
+    setCustomNewsletterDraft((current) => ({
+      ...current,
+      ...patch
+    }));
+  };
+
+  const handleUseCustomNewsletter = () => {
+    if (!customNewsletter) return;
+    setSelectedNewsletterId(customNewsletter.id);
+    setNewsletterBroadcastRun(null);
+  };
+
   const handleReset = () => {
     setInboxByHcp({});
     setLatestDecision(null);
     setStreamText('');
     setStatus('idle');
     setStatusMessage('Ready for a Relevance Check');
+    setNewsletterBroadcastRun(null);
   };
 
   return (
@@ -186,7 +393,7 @@ export function App() {
         {activeTab === 'anonymization' ? (
           <AnonymizationTab
             hcp={selectedHcp}
-            hcps={data.hcps}
+            hcps={hcps}
             anonymizedProfiles={anonymizedProfiles}
             onSelectHcp={setSelectedHcpId}
           />
@@ -194,9 +401,17 @@ export function App() {
 
         {activeTab === 'newsletters' ? (
           <NewslettersTab
-            newsletters={data.newsletters}
+            hcps={hcps}
+            newsletters={newsletters}
             selectedNewsletter={selectedNewsletter}
+            customNewsletterDraft={customNewsletterDraft}
+            broadcastRun={newsletterBroadcastRun}
+            streamText={streamText}
+            isChecking={isChecking}
             onSelectNewsletter={setSelectedNewsletterId}
+            onUpdateCustomNewsletterDraft={handleUpdateCustomNewsletterDraft}
+            onUseCustomNewsletter={handleUseCustomNewsletter}
+            onRunNewsletterCheck={handleRunNewsletterBroadcast}
           />
         ) : null}
 
@@ -213,8 +428,8 @@ export function App() {
 
         {activeTab === 'app' ? (
           <HcpAppTab
-            hcps={data.hcps}
-            newsletters={data.newsletters}
+            hcps={hcps}
+            newsletters={newsletters}
             selectedHcp={selectedHcp}
             selectedNewsletter={selectedNewsletter}
             selectedInbox={selectedInbox}
@@ -225,6 +440,8 @@ export function App() {
             isChecking={isChecking}
             onSelectHcp={setSelectedHcpId}
             onSelectNewsletter={setSelectedNewsletterId}
+            onUpdateHcpProfile={handleUpdateHcpProfile}
+            onResetHcpProfile={handleResetHcpProfile}
             onRunCheck={handleRunCheck}
             onReset={handleReset}
           />
@@ -255,6 +472,8 @@ function HcpAppTab({
   isChecking,
   onSelectHcp,
   onSelectNewsletter,
+  onUpdateHcpProfile,
+  onResetHcpProfile,
   onRunCheck,
   onReset
 }: {
@@ -270,6 +489,8 @@ function HcpAppTab({
   isChecking: boolean;
   onSelectHcp: (hcpId: string) => void;
   onSelectNewsletter: (newsletterId: string) => void;
+  onUpdateHcpProfile: (hcpId: string, profile: Hcp['relevanceProfile']) => void;
+  onResetHcpProfile: (hcpId: string) => void;
   onRunCheck: () => void;
   onReset: () => void;
 }) {
@@ -293,6 +514,13 @@ function HcpAppTab({
             </button>
           ))}
         </div>
+
+        <HcpFilterEditor
+          hcp={selectedHcp}
+          isChecking={isChecking}
+          onUpdateProfile={onUpdateHcpProfile}
+          onResetProfile={onResetHcpProfile}
+        />
 
         <SectionLabel icon={Newspaper} label="Newsletter" />
         <select
@@ -321,7 +549,7 @@ function HcpAppTab({
       </aside>
 
       <div className="phone-stage">
-        <PhoneInbox hcp={selectedHcp} inbox={selectedInbox} />
+        <PhoneInbox hcp={selectedHcp} inbox={selectedInbox} onRefresh={onRunCheck} isChecking={isChecking} />
       </div>
 
       <aside className="decision-rail">
@@ -330,6 +558,120 @@ function HcpAppTab({
         <LatestDecisionCard decision={latestDecision} streamText={streamText} />
       </aside>
     </section>
+  );
+}
+
+function HcpFilterEditor({
+  hcp,
+  isChecking,
+  onUpdateProfile,
+  onResetProfile
+}: {
+  hcp: Hcp;
+  isChecking: boolean;
+  onUpdateProfile: (hcpId: string, profile: Hcp['relevanceProfile']) => void;
+  onResetProfile: (hcpId: string) => void;
+}) {
+  const [newTrait, setNewTrait] = useState('');
+  const profile = hcp.relevanceProfile;
+
+  const updateProfile = (patch: Partial<Hcp['relevanceProfile']>) => {
+    onUpdateProfile(hcp.id, {
+      ...profile,
+      ...patch
+    });
+  };
+
+  const handleAddTrait = () => {
+    const trait = newTrait.trim();
+    if (!trait) return;
+
+    const alreadyExists = profile.traits.some(
+      (currentTrait) => currentTrait.toLowerCase() === trait.toLowerCase()
+    );
+    if (alreadyExists) {
+      setNewTrait('');
+      return;
+    }
+
+    updateProfile({ traits: [...profile.traits, trait] });
+    setNewTrait('');
+  };
+
+  const handleRemoveTrait = (traitToRemove: string) => {
+    updateProfile({
+      traits: profile.traits.filter((trait) => trait !== traitToRemove)
+    });
+  };
+
+  return (
+    <div className="filter-editor">
+      <SectionLabel icon={Settings} label="HCP filter" />
+      <label className="field-label" htmlFor="hcp-filter-summary">
+        Profile summary
+      </label>
+      <textarea
+        id="hcp-filter-summary"
+        className="text-area filter-summary"
+        value={profile.summary}
+        onChange={(event) => updateProfile({ summary: event.target.value })}
+        disabled={isChecking}
+      />
+
+      <div className="editable-trait-cloud">
+        {profile.traits.map((trait) => (
+          <button
+            key={trait}
+            type="button"
+            className="trait-pill-button"
+            onClick={() => handleRemoveTrait(trait)}
+            disabled={isChecking}
+            aria-label={`Remove ${trait}`}
+            title={`Remove ${trait}`}
+          >
+            <span>{trait}</span>
+            <X size={13} />
+          </button>
+        ))}
+      </div>
+
+      <div className="inline-field-row">
+        <input
+          className="text-input"
+          type="text"
+          aria-label="Add filter trait"
+          placeholder="Add clinical trait"
+          value={newTrait}
+          onChange={(event) => setNewTrait(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              handleAddTrait();
+            }
+          }}
+          disabled={isChecking}
+        />
+        <button
+          className="secondary-action icon-text-action"
+          type="button"
+          onClick={handleAddTrait}
+          disabled={isChecking || !newTrait.trim()}
+        >
+          <Plus size={16} />
+          <span>Add filter trait</span>
+        </button>
+      </div>
+
+      <button
+        className="secondary-action compact-action"
+        type="button"
+        onClick={() => onResetProfile(hcp.id)}
+        disabled={isChecking}
+      >
+        <RefreshCcw size={14} />
+        <span>Reset filter</span>
+      </button>
+    </div>
   );
 }
 
@@ -413,14 +755,39 @@ function AnonymizationTab({
 }
 
 function NewslettersTab({
+  hcps,
   newsletters,
   selectedNewsletter,
-  onSelectNewsletter
+  customNewsletterDraft,
+  broadcastRun,
+  streamText,
+  isChecking,
+  onSelectNewsletter,
+  onUpdateCustomNewsletterDraft,
+  onUseCustomNewsletter,
+  onRunNewsletterCheck
 }: {
+  hcps: Hcp[];
   newsletters: Newsletter[];
   selectedNewsletter: Newsletter;
+  customNewsletterDraft: CustomNewsletterDraft;
+  broadcastRun: NewsletterBroadcastRun | null;
+  streamText: string;
+  isChecking: boolean;
   onSelectNewsletter: (newsletterId: string) => void;
+  onUpdateCustomNewsletterDraft: (patch: Partial<CustomNewsletterDraft>) => void;
+  onUseCustomNewsletter: () => void;
+  onRunNewsletterCheck: () => void;
 }) {
+  const runForSelectedNewsletter =
+    broadcastRun?.newsletterId === selectedNewsletter.id ? broadcastRun : null;
+  const isBroadcastingSelected =
+    isChecking &&
+    Boolean(runForSelectedNewsletter) &&
+    runForSelectedNewsletter?.checkedCount !== runForSelectedNewsletter?.totalCount;
+  const checkedCount = runForSelectedNewsletter?.checkedCount ?? 0;
+  const totalCount = runForSelectedNewsletter?.totalCount ?? hcps.length;
+
   return (
     <section className="newsletter-layout">
       <div className="section-heading">
@@ -428,22 +795,46 @@ function NewslettersTab({
           <h2>Curated Newsletter inputs</h2>
           <p>Each Newsletter is evaluated as a complete communication, then only the relevant part is summarized.</p>
         </div>
+        <button
+          id="newsletter-check-all-button"
+          className="primary-action newsletter-broadcast-action"
+          type="button"
+          onClick={onRunNewsletterCheck}
+          disabled={isChecking}
+        >
+          {isBroadcastingSelected ? <Sparkles size={18} /> : <Send size={18} />}
+          <span>
+            {isBroadcastingSelected
+              ? `Checking ${Math.min(checkedCount + 1, totalCount)}/${totalCount}`
+              : 'Check relevance for all HCPs'}
+          </span>
+        </button>
       </div>
 
       <div className="newsletter-grid">
-        <div className="newsletter-list">
-          {newsletters.map((newsletter) => (
-            <button
-              key={newsletter.id}
-              type="button"
-              className={`newsletter-row ${newsletter.id === selectedNewsletter.id ? 'is-selected' : ''}`}
-              onClick={() => onSelectNewsletter(newsletter.id)}
-            >
-              <span>{newsletter.topic}</span>
-              <strong>{newsletter.title}</strong>
-              <small>{newsletter.source} | {newsletter.readingTime}</small>
-            </button>
-          ))}
+        <div className="newsletter-source-column">
+          <CustomNewsletterComposer
+            draft={customNewsletterDraft}
+            isChecking={isChecking}
+            onChange={onUpdateCustomNewsletterDraft}
+            onUseCustomNewsletter={onUseCustomNewsletter}
+          />
+
+          <div className="newsletter-list">
+            {newsletters.map((newsletter) => (
+              <button
+                key={newsletter.id}
+                type="button"
+                className={`newsletter-row ${newsletter.id === selectedNewsletter.id ? 'is-selected' : ''}`}
+                onClick={() => onSelectNewsletter(newsletter.id)}
+                disabled={isChecking}
+              >
+                <span>{newsletter.topic}</span>
+                <strong>{newsletter.title}</strong>
+                <small>{newsletter.source} | {newsletter.readingTime}</small>
+              </button>
+            ))}
+          </div>
         </div>
 
         <article className="newsletter-detail">
@@ -454,7 +845,11 @@ function NewslettersTab({
           </div>
           <h2>{selectedNewsletter.title}</h2>
           <p className="lead">{selectedNewsletter.keyTakeaway}</p>
-          <p>{selectedNewsletter.content}</p>
+          <div className="newsletter-body">
+            {selectedNewsletter.content.split(/\n+/).map((paragraph, index) => (
+              <p key={`${selectedNewsletter.id}-paragraph-${index}`}>{paragraph}</p>
+            ))}
+          </div>
           <div className="trait-cloud">
             {selectedNewsletter.clinicalSignals.map((signal) => (
               <span key={signal}>{signal}</span>
@@ -464,8 +859,243 @@ function NewslettersTab({
             Original Newsletter link
           </a>
         </article>
+
+        <NewsletterBroadcastPanel
+          hcps={hcps}
+          selectedNewsletter={selectedNewsletter}
+          broadcastRun={runForSelectedNewsletter}
+          streamText={streamText}
+          isChecking={isBroadcastingSelected}
+        />
       </div>
     </section>
+  );
+}
+
+function CustomNewsletterComposer({
+  draft,
+  isChecking,
+  onChange,
+  onUseCustomNewsletter
+}: {
+  draft: CustomNewsletterDraft;
+  isChecking: boolean;
+  onChange: (patch: Partial<CustomNewsletterDraft>) => void;
+  onUseCustomNewsletter: () => void;
+}) {
+  const canUseCustomNewsletter = draft.content.trim().length > 0;
+
+  const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const content = typeof reader.result === 'string' ? reader.result : '';
+      const titleFromFile = file.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ');
+      onChange({
+        content,
+        title: draft.title.trim() || titleFromFile
+      });
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+  };
+
+  return (
+    <article className="custom-newsletter-panel">
+      <SectionLabel icon={FileText} label="Tester Newsletter" />
+
+      <label className="field-label" htmlFor="custom-newsletter-title">
+        Custom Newsletter title
+      </label>
+      <input
+        id="custom-newsletter-title"
+        className="text-input"
+        type="text"
+        value={draft.title}
+        onChange={(event) => onChange({ title: event.target.value })}
+        disabled={isChecking}
+        placeholder="Paste or upload a title"
+      />
+
+      <div className="form-grid two-up">
+        <div>
+          <label className="field-label" htmlFor="custom-newsletter-source">
+            Custom Newsletter source
+          </label>
+          <input
+            id="custom-newsletter-source"
+            className="text-input"
+            type="text"
+            value={draft.source}
+            onChange={(event) => onChange({ source: event.target.value })}
+            disabled={isChecking}
+          />
+        </div>
+        <div>
+          <label className="field-label" htmlFor="custom-newsletter-topic">
+            Custom Newsletter topic
+          </label>
+          <input
+            id="custom-newsletter-topic"
+            className="text-input"
+            type="text"
+            value={draft.topic}
+            onChange={(event) => onChange({ topic: event.target.value })}
+            disabled={isChecking}
+            placeholder="e.g. Cardiology"
+          />
+        </div>
+      </div>
+
+      <label className="field-label" htmlFor="custom-newsletter-takeaway">
+        Custom Newsletter key takeaway
+      </label>
+      <textarea
+        id="custom-newsletter-takeaway"
+        className="text-area compact-text-area"
+        value={draft.keyTakeaway}
+        onChange={(event) => onChange({ keyTakeaway: event.target.value })}
+        disabled={isChecking}
+        placeholder="Short push-summary seed"
+      />
+
+      <label className="field-label" htmlFor="custom-newsletter-text">
+        Custom Newsletter text
+      </label>
+      <textarea
+        id="custom-newsletter-text"
+        className="text-area newsletter-upload-area"
+        value={draft.content}
+        onChange={(event) => onChange({ content: event.target.value })}
+        disabled={isChecking}
+        placeholder="Paste the full Newsletter text here"
+      />
+
+      <div className="custom-newsletter-actions">
+        <label className={`secondary-action file-import-action ${isChecking ? 'is-disabled' : ''}`}>
+          <FileText size={15} />
+          <span>Import text file</span>
+          <input
+            type="file"
+            accept=".txt,.md,.text,text/plain,text/markdown"
+            onChange={handleFileImport}
+            disabled={isChecking}
+          />
+        </label>
+        <button
+          className="primary-action"
+          type="button"
+          onClick={onUseCustomNewsletter}
+          disabled={isChecking || !canUseCustomNewsletter}
+        >
+          <Send size={16} />
+          <span>Use custom newsletter</span>
+        </button>
+      </div>
+    </article>
+  );
+}
+
+function NewsletterBroadcastPanel({
+  hcps,
+  selectedNewsletter,
+  broadcastRun,
+  streamText,
+  isChecking
+}: {
+  hcps: Hcp[];
+  selectedNewsletter: Newsletter;
+  broadcastRun: NewsletterBroadcastRun | null;
+  streamText: string;
+  isChecking: boolean;
+}) {
+  const resultsByHcpId = new Map(
+    broadcastRun?.results.map((decision) => [decision.hcpId, decision]) ?? []
+  );
+  const pushCount = broadcastRun?.results.filter((decision) => decision.push).length ?? 0;
+  const noPushCount = broadcastRun ? broadcastRun.checkedCount - pushCount : 0;
+
+  return (
+    <aside className="broadcast-panel">
+      <SectionLabel icon={Send} label="Newsletter distribution" />
+
+      <div className="broadcast-summary">
+        <strong>{broadcastRun ? `${pushCount} push${pushCount === 1 ? '' : 'es'} ready` : 'Not checked yet'}</strong>
+        <span>
+          {broadcastRun
+            ? `${broadcastRun.checkedCount}/${broadcastRun.totalCount} HCP profiles checked, ${noPushCount} no-push`
+            : `Run this Newsletter against all ${hcps.length} HCP Relevance Profiles.`}
+        </span>
+      </div>
+
+      {broadcastRun?.error ? (
+        <div className="broadcast-error">
+          <XCircle size={17} />
+          <span>{broadcastRun.error}</span>
+        </div>
+      ) : null}
+
+      <div className="broadcast-live-box">
+        <span>{isChecking ? `Live generation: ${broadcastRun?.activeHcpName}` : 'Latest generation'}</span>
+        <p>{streamText || `No generated result yet for ${selectedNewsletter.title}.`}</p>
+      </div>
+
+      <div className="distribution-list">
+        {hcps.map((hcp) => {
+          const decision = resultsByHcpId.get(hcp.id);
+          const isActive = broadcastRun?.activeHcpName === hcp.name && isChecking;
+
+          return (
+            <article
+              key={hcp.id}
+              className={`distribution-row accent-${hcp.accent} ${decision?.push ? 'is-push' : ''} ${isActive ? 'is-active' : ''}`}
+            >
+              <div className="distribution-head">
+                <span className="choice-avatar">{initials(hcp.name)}</span>
+                <div>
+                  <strong>{hcp.name}</strong>
+                  <small>{hcp.role}</small>
+                </div>
+              </div>
+
+              <div className="distribution-outcome">
+                {isActive ? (
+                  <>
+                    <Sparkles size={16} />
+                    <span>Checking now</span>
+                  </>
+                ) : decision ? (
+                  decision.push ? (
+                    <>
+                      <CheckCircle2 size={16} />
+                      <span>Push sent | {decision.score}/100</span>
+                    </>
+                  ) : (
+                    <>
+                      <XCircle size={16} />
+                      <span>No push | {decision.score}/100</span>
+                    </>
+                  )
+                ) : (
+                  <>
+                    <BrainCircuit size={16} />
+                    <span>Waiting</span>
+                  </>
+                )}
+              </div>
+
+              {decision?.summary ? (
+                <p>{decision.summary.body}</p>
+              ) : decision ? (
+                <p>{decision.rationale}</p>
+              ) : null}
+            </article>
+          );
+        })}
+      </div>
+    </aside>
   );
 }
 
@@ -539,7 +1169,18 @@ function DecisionTab({
   );
 }
 
-function PhoneInbox({ hcp, inbox }: { hcp: Hcp; inbox: InboxItem[] }) {
+type PhoneTab = 'recaps' | 'inbox' | 'community';
+
+function PhoneInbox({ hcp, inbox, onRefresh, isChecking }: { hcp: Hcp; inbox: InboxItem[]; onRefresh: () => void; isChecking: boolean }) {
+  const [activeTab, setActiveTab] = useState<PhoneTab>('inbox');
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+
+  const tabNames: Record<PhoneTab, string> = {
+    recaps: 'Monthly Recaps',
+    inbox: 'HCP Inbox',
+    community: 'Community Forum'
+  };
+
   return (
     <div className="phone-frame" id="phone-inbox" aria-label="Smartphone-style HCP Inbox">
       <div className="phone-top">
@@ -547,35 +1188,121 @@ function PhoneInbox({ hcp, inbox }: { hcp: Hcp; inbox: InboxItem[] }) {
         <span className="phone-notch" />
         <span>5G</span>
       </div>
+      
       <div className="phone-appbar">
-        <div>
-          <small>HCP Inbox</small>
+        <button 
+          className={`avatar-dot accent-${hcp.accent} profile-trigger`} 
+          onClick={() => setIsProfileOpen(true)}
+          type="button"
+          title="View HCP Profile"
+        >
+          {initials(hcp.name)}
+        </button>
+        <div className="appbar-title">
+          <small>{tabNames[activeTab]}</small>
           <strong>{hcp.name}</strong>
         </div>
-        <span className={`avatar-dot accent-${hcp.accent}`}>{initials(hcp.name)}</span>
+        <div style={{ width: 40 }} /> {/* spacer */}
       </div>
-      <div className="phone-content">
-        {inbox.length ? (
-          inbox.map((item) => (
-            <article key={item.id} className="push-card">
-              <div className="push-card-head">
-                <span>{item.mode === 'live' ? 'Live AI' : 'Fallback'}</span>
-                <span>{item.score}/100</span>
+
+      {isProfileOpen && (
+        <div className="phone-profile-overlay">
+          <div className="profile-modal">
+            <div className="profile-modal-head">
+              <button type="button" className="icon-button" aria-label="Settings" title="Settings">
+                <Settings size={20} />
+              </button>
+              <h3>HCP Profile</h3>
+              <button type="button" className="icon-button" onClick={() => setIsProfileOpen(false)} aria-label="Close" title="Close">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="profile-modal-body">
+              <div className={`modal-avatar accent-${hcp.accent}`}>
+                {initials(hcp.name)}
               </div>
-              <h3>{item.title}</h3>
-              <p>{item.body}</p>
-              <small>{item.whyRelevant}</small>
-              <a href={item.sourceUrl}>Open original Newsletter</a>
-            </article>
-          ))
-        ) : (
-          <div className="empty-inbox">
-            <ShieldCheck size={34} />
-            <h3>No pushed updates</h3>
-            <p>The HCP Inbox only receives Push-Worthy Relevance Summaries.</p>
+              <h2>{hcp.name}</h2>
+              <span className="modal-role">{hcp.role}</span>
+              <p className="modal-summary">{hcp.relevanceProfile.summary}</p>
+              <div className="trait-cloud">
+                {hcp.relevanceProfile.traits.map((trait) => (
+                  <span key={trait}>{trait}</span>
+                ))}
+              </div>
+            </div>
           </div>
+        </div>
+      )}
+
+      <div className="phone-content">
+        {activeTab === 'inbox' && (
+          <>
+            <div className="inbox-header">
+              <h3 className="view-title" style={{ margin: 0 }}>Latest Pushes</h3>
+              <button 
+                type="button"
+                className="secondary-action compact-action" 
+                onClick={onRefresh}
+                disabled={isChecking}
+              >
+                {isChecking ? <Sparkles size={14} /> : <RefreshCcw size={14} />} 
+                {isChecking ? 'Checking...' : 'Refresh'}
+              </button>
+            </div>
+            {inbox.length ? (
+              inbox.map((item) => (
+                <article key={item.id} className="push-card">
+                  <div className="push-card-head">
+                    <span>{item.mode === 'live' ? 'Live AI' : 'Fallback'}</span>
+                    <span>{item.score}/100</span>
+                  </div>
+                  <h3>{item.title}</h3>
+                  <p>{item.body}</p>
+                  <small>{item.whyRelevant}</small>
+                  <a href={item.sourceUrl}>Open original Newsletter</a>
+                </article>
+              ))
+            ) : (
+              <div className="empty-inbox">
+                <ShieldCheck size={34} />
+                <h3>No pushed updates</h3>
+                <p>The HCP Inbox only receives Push-Worthy Relevance Summaries.</p>
+              </div>
+            )}
+          </>
         )}
+
+        {activeTab === 'recaps' && <RecapsView />}
+
+        {activeTab === 'community' && <CommunityForum hcp={hcp} />}
       </div>
+
+      <nav className="phone-bottom-nav">
+        <button 
+          type="button" 
+          className={`nav-tab ${activeTab === 'recaps' ? 'active' : ''}`}
+          onClick={() => setActiveTab('recaps')}
+        >
+          <FileText size={22} />
+          <span>Recaps</span>
+        </button>
+        <button 
+          type="button" 
+          className={`nav-tab ${activeTab === 'inbox' ? 'active' : ''}`}
+          onClick={() => setActiveTab('inbox')}
+        >
+          <Send size={22} />
+          <span>Inbox</span>
+        </button>
+        <button 
+          type="button" 
+          className={`nav-tab ${activeTab === 'community' ? 'active' : ''}`}
+          onClick={() => setActiveTab('community')}
+        >
+          <MessageSquare size={22} />
+          <span>Community</span>
+        </button>
+      </nav>
     </div>
   );
 }
@@ -730,4 +1457,526 @@ function formatDate(value: string): string {
     day: 'numeric',
     year: 'numeric'
   }).format(new Date(value));
+}
+
+function buildCustomNewsletter(draft: CustomNewsletterDraft): Newsletter | null {
+  const content = draft.content.trim();
+  if (!content) return null;
+
+  const title = draft.title.trim() || 'Custom Newsletter';
+  const source = draft.source.trim() || 'Tester upload';
+  const topic = draft.topic.trim() || 'Custom newsletter';
+  const keyTakeaway = draft.keyTakeaway.trim() || firstSentence(content);
+
+  return {
+    id: customNewsletterId,
+    title,
+    source,
+    publishedAt: new Date().toISOString().slice(0, 10),
+    readingTime: estimateReadingTime(content),
+    topic,
+    sourceUrl: '#',
+    clinicalSignals: uniqueNonEmpty([topic, title, keyTakeaway]),
+    keyTakeaway,
+    content
+  };
+}
+
+function estimateReadingTime(content: string): string {
+  const wordCount = content.split(/\s+/).filter(Boolean).length;
+  return `${Math.max(1, Math.ceil(wordCount / 180))} min`;
+}
+
+function firstSentence(content: string): string {
+  const first = content.split(/(?<=[.!?])\s+/)[0]?.trim();
+  if (!first) return 'Tester supplied Newsletter content ready for relevance screening.';
+  return first.length > 240 ? `${first.slice(0, 237)}...` : first;
+}
+
+function uniqueNonEmpty(values: string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const value of values) {
+    const text = value.trim();
+    const key = text.toLowerCase();
+    if (!text || seen.has(key)) continue;
+    seen.add(key);
+    result.push(text);
+  }
+
+  return result;
+}
+
+// --- Recaps View Implementation ---
+
+interface Recap {
+  id: string;
+  title: string;
+  summary: string;
+  details: string[];
+}
+
+const initialRecaps: Recap[] = [
+  {
+    id: 'r1',
+    title: 'May 2026 Oncology Highlights',
+    summary: 'A quick summary of the 4 most practice-changing updates pushed to you this month, tailored to your active patient panel.',
+    details: [
+      '• New FDA approval for targeted KRAS inhibitor in late-stage NSCLC.',
+      '• Updated ASCO guidelines for managing immunotoxicity.',
+      '• Supply chain alert: Temporary shortage of standard chemotherapy drug X.',
+      '• Liquid biopsy screening shown to reduce false positives by 15%.'
+    ]
+  },
+  {
+    id: 'r2',
+    title: 'April 2026 Oncology Highlights',
+    summary: 'Your digest of last month\'s 6 key updates, including new ASCO guidelines.',
+    details: [
+      '• Revised EGFR monitoring recommendations: shift to 6-month intervals.',
+      '• Phase 3 trial results for new mAb show significant PFS improvement.',
+      '• Case study: Managing rare adverse effects in combination therapy.',
+      '• Reminder: Annual oncology conference early bird registration.',
+      '• Integration of AI scribes in clinic workflows reduces documentation time by 40%.',
+      '• New clinical guidelines for adjuvant therapy in early-stage breast cancer.'
+    ]
+  }
+];
+
+function RecapsView() {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const toggleExpand = (id: string) => {
+    setExpandedId(expandedId === id ? null : id);
+  };
+
+  return (
+    <div className="recaps-view">
+      <h3 className="view-title">Monthly Recaps</h3>
+      {initialRecaps.map(recap => (
+        <article key={recap.id} className="recap-card">
+          <h4>{recap.title}</h4>
+          <p>{recap.summary}</p>
+          
+          {expandedId === recap.id && (
+            <div className="recap-details">
+              <ul>
+                {recap.details.map((detail, index) => (
+                  <li key={index}>{detail}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          
+          <button 
+            type="button"
+            className="secondary-action compact-action" 
+            onClick={() => toggleExpand(recap.id)}
+          >
+            {expandedId === recap.id ? 'Close Recap' : 'Read Recap'}
+          </button>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+// --- Community Forum Implementation ---
+
+interface Comment {
+  id: string;
+  author: string;
+  authorInitials: string;
+  accent: string;
+  text: string;
+  timestamp: string;
+}
+
+interface Post {
+  id: string;
+  author: string;
+  authorInitials: string;
+  accent: string;
+  timestamp: string;
+  createdAt: number;
+  content: string;
+  likes: number;
+  dislikes: number;
+  userLiked: boolean;
+  userDisliked: boolean;
+  comments: Comment[];
+  showComments?: boolean;
+}
+
+const now = Date.now();
+const hour = 60 * 60 * 1000;
+
+const initialPosts: Post[] = [
+  {
+    id: 'p1',
+    author: 'Dr. David Bauer',
+    authorInitials: 'DB',
+    accent: 'blue',
+    timestamp: '2 hours ago',
+    createdAt: now - 2 * hour,
+    content: 'Has anyone seen the latest phase 3 data on the new targeted therapy? It looks incredibly promising for late-stage patients.',
+    likes: 12,
+    dislikes: 1,
+    userLiked: false,
+    userDisliked: false,
+    comments: [
+      {
+        id: 'c1',
+        author: 'Dr. Sofia Keller',
+        authorInitials: 'SK',
+        accent: 'green',
+        text: 'Yes! The progression-free survival delta was quite impressive. I plan to mention this to my panel tomorrow.',
+        timestamp: '1 hour ago'
+      },
+      {
+        id: 'c2',
+        author: 'Dr. Marc Dubois',
+        authorInitials: 'MD',
+        accent: 'violet',
+        text: 'I am waiting for the subgroup analysis on patients with prior resistance mutations.',
+        timestamp: '45 mins ago'
+      }
+    ]
+  },
+  {
+    id: 'p2',
+    author: 'Dr. Sofia Keller',
+    authorInitials: 'SK',
+    accent: 'green',
+    timestamp: '5 hours ago',
+    createdAt: now - 5 * hour,
+    content: 'Just read the pushed update on EGFR monitoring. Changing our screening protocols tomorrow.',
+    likes: 34,
+    dislikes: 0,
+    userLiked: true,
+    userDisliked: false,
+    comments: [
+      {
+        id: 'c3',
+        author: 'Andrea Rossi',
+        authorInitials: 'AR',
+        accent: 'amber',
+        text: 'Agreed. The new imaging frequency recommendations make a lot of sense.',
+        timestamp: '2 hours ago'
+      }
+    ]
+  },
+  {
+    id: 'p3',
+    author: 'Dr. Michael Chen',
+    authorInitials: 'MC',
+    accent: 'rose',
+    timestamp: '15 mins ago',
+    createdAt: now - 0.25 * hour,
+    content: 'Are there any recent supply chain issues with standard chemotherapy drugs in your regions? We are seeing backorders.',
+    likes: 3,
+    dislikes: 0,
+    userLiked: false,
+    userDisliked: false,
+    comments: []
+  },
+  {
+    id: 'p4',
+    author: 'Dr. Elena Rostova',
+    authorInitials: 'ER',
+    accent: 'amber',
+    timestamp: '4 hours ago',
+    createdAt: now - 4 * hour,
+    content: 'I highly recommend the new webinar on managing immunotoxicity. The case studies were extremely relevant to my current patients.',
+    likes: 45,
+    dislikes: 2,
+    userLiked: false,
+    userDisliked: false,
+    comments: []
+  },
+  {
+    id: 'p5',
+    author: 'Dr. Thomas Wright',
+    authorInitials: 'TW',
+    accent: 'indigo',
+    timestamp: '10 hours ago',
+    createdAt: now - 10 * hour,
+    content: 'The recent FDA approval for the new KRAS inhibitor is a game changer for our clinic.',
+    likes: 120,
+    dislikes: 5,
+    userLiked: true,
+    userDisliked: false,
+    comments: []
+  },
+  {
+    id: 'p6',
+    author: 'Dr. Sarah Jenkins',
+    authorInitials: 'SJ',
+    accent: 'violet',
+    timestamp: '1 day ago',
+    createdAt: now - 24 * hour,
+    content: 'Has anyone integrated the new liquid biopsy screening into their standard workflows? Looking for best practices.',
+    likes: 15,
+    dislikes: 0,
+    userLiked: false,
+    userDisliked: false,
+    comments: []
+  },
+  {
+    id: 'p7',
+    author: 'Dr. Liam O\'Connor',
+    authorInitials: 'LO',
+    accent: 'green',
+    timestamp: '1 day ago',
+    createdAt: now - 25 * hour,
+    content: 'A patient asked me about an experimental diet they saw on TikTok... How do you handle medical misinformation in the clinic?',
+    likes: 89,
+    dislikes: 1,
+    userLiked: false,
+    userDisliked: false,
+    comments: []
+  },
+  {
+    id: 'p8',
+    author: 'Dr. Aisha Patel',
+    authorInitials: 'AP',
+    accent: 'blue',
+    timestamp: '2 days ago',
+    createdAt: now - 48 * hour,
+    content: 'Just published a small case series on rare adverse effects. Happy to share the preprint if anyone is interested.',
+    likes: 56,
+    dislikes: 0,
+    userLiked: false,
+    userDisliked: false,
+    comments: []
+  },
+  {
+    id: 'p9',
+    author: 'Dr. Wei Zhang',
+    authorInitials: 'WZ',
+    accent: 'teal',
+    timestamp: '2 days ago',
+    createdAt: now - 50 * hour,
+    content: 'Question: What is the consensus on off-label prescribing for the new mAb when insurance denies coverage?',
+    likes: 22,
+    dislikes: 4,
+    userLiked: false,
+    userDisliked: false,
+    comments: []
+  },
+  {
+    id: 'p10',
+    author: 'Dr. Chloe Martin',
+    authorInitials: 'CM',
+    accent: 'rose',
+    timestamp: '3 days ago',
+    createdAt: now - 72 * hour,
+    content: 'Reminder to all: the annual conference early bird registration ends tomorrow!',
+    likes: 5,
+    dislikes: 12,
+    userLiked: false,
+    userDisliked: true,
+    comments: []
+  },
+  {
+    id: 'p11',
+    author: 'Dr. Robert Kim',
+    authorInitials: 'RK',
+    accent: 'indigo',
+    timestamp: '4 days ago',
+    createdAt: now - 96 * hour,
+    content: 'I feel like I am drowning in paperwork this week. Does anyone use AI scribes effectively?',
+    likes: 210,
+    dislikes: 2,
+    userLiked: false,
+    userDisliked: false,
+    comments: []
+  },
+  {
+    id: 'p12',
+    author: 'Dr. Olivia Brown',
+    authorInitials: 'OB',
+    accent: 'amber',
+    timestamp: '1 week ago',
+    createdAt: now - 168 * hour,
+    content: 'The new clinical guidelines are finally out! Thoughts?',
+    likes: 312,
+    dislikes: 8,
+    userLiked: false,
+    userDisliked: false,
+    comments: []
+  }
+];
+
+function CommunityForum({ hcp }: { hcp: Hcp }) {
+  const [posts, setPosts] = useState<Post[]>(initialPosts);
+  const [newPostContent, setNewPostContent] = useState('');
+  const [sortBy, setSortBy] = useState<'recent' | 'popular'>('recent');
+
+  const handlePostSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPostContent.trim()) return;
+
+    const newPost: Post = {
+      id: `p${Date.now()}`,
+      author: hcp.name,
+      authorInitials: initials(hcp.name),
+      accent: hcp.accent,
+      timestamp: 'Just now',
+      createdAt: Date.now(),
+      content: newPostContent.trim(),
+      likes: 0,
+      dislikes: 0,
+      userLiked: false,
+      userDisliked: false,
+      comments: []
+    };
+
+    setPosts([newPost, ...posts]);
+    setNewPostContent('');
+  };
+
+  const toggleLike = (postId: string) => {
+    setPosts(posts.map(p => {
+      if (p.id !== postId) return p;
+      if (p.userLiked) {
+        return { ...p, userLiked: false, likes: p.likes - 1 };
+      }
+      return { 
+        ...p, 
+        userLiked: true, 
+        likes: p.likes + 1,
+        userDisliked: false,
+        dislikes: p.userDisliked ? p.dislikes - 1 : p.dislikes
+      };
+    }));
+  };
+
+  const toggleDislike = (postId: string) => {
+    setPosts(posts.map(p => {
+      if (p.id !== postId) return p;
+      if (p.userDisliked) {
+        return { ...p, userDisliked: false, dislikes: p.dislikes - 1 };
+      }
+      return { 
+        ...p, 
+        userDisliked: true, 
+        dislikes: p.dislikes + 1,
+        userLiked: false,
+        likes: p.userLiked ? p.likes - 1 : p.likes
+      };
+    }));
+  };
+
+  const toggleComments = (postId: string) => {
+    setPosts(posts.map(p => 
+      p.id === postId ? { ...p, showComments: !p.showComments } : p
+    ));
+  };
+
+  const sortedPosts = [...posts].sort((a, b) => {
+    if (sortBy === 'recent') {
+      return b.createdAt - a.createdAt;
+    } else {
+      return b.likes - a.likes;
+    }
+  });
+
+  return (
+    <div className="community-view">
+      <div className="forum-header">
+        <h3 className="view-title" style={{ marginBottom: 0 }}>HCP Community Forum</h3>
+        <div className="forum-sort">
+          <button 
+            type="button" 
+            className={sortBy === 'recent' ? 'active-sort' : ''} 
+            onClick={() => setSortBy('recent')}
+          >
+            New
+          </button>
+          <button 
+            type="button" 
+            className={sortBy === 'popular' ? 'active-sort' : ''} 
+            onClick={() => setSortBy('popular')}
+          >
+            Top
+          </button>
+        </div>
+      </div>
+      
+      <form className="post-composer" onSubmit={handlePostSubmit}>
+        <div className="composer-header">
+          <span className={`avatar-dot accent-${hcp.accent}`}>{initials(hcp.name)}</span>
+          <strong>Post as {hcp.name}</strong>
+        </div>
+        <textarea 
+          placeholder="Share a clinical insight or ask a question..." 
+          value={newPostContent}
+          onChange={(e) => setNewPostContent(e.target.value)}
+          rows={3}
+        />
+        <div className="composer-footer">
+          <button type="submit" className="primary-action compact-action" disabled={!newPostContent.trim()}>
+            Post to Forum
+          </button>
+        </div>
+      </form>
+
+      <div className="forum-feed">
+        {sortedPosts.map(post => (
+          <article key={post.id} className="community-post">
+            <div className="post-author">
+              <span className={`avatar-dot accent-${post.accent}`}>{post.authorInitials}</span>
+              <div>
+                <strong>{post.author}</strong>
+                <small>{post.timestamp}</small>
+              </div>
+            </div>
+            <p>{post.content}</p>
+            <div className="community-actions">
+              <button 
+                type="button" 
+                className={post.userLiked ? 'action-active-like' : ''} 
+                onClick={() => toggleLike(post.id)}
+              >
+                <Heart size={16} fill={post.userLiked ? 'currentColor' : 'none'} /> {post.likes}
+              </button>
+              <button 
+                type="button" 
+                className={post.userDisliked ? 'action-active-dislike' : ''} 
+                onClick={() => toggleDislike(post.id)}
+              >
+                <ThumbsDown size={16} fill={post.userDisliked ? 'currentColor' : 'none'} /> {post.dislikes}
+              </button>
+              <button type="button" onClick={() => toggleComments(post.id)}>
+                <MessageSquare size={16} /> {post.comments.length} Comments
+              </button>
+            </div>
+            
+            {post.showComments && (
+              <div className="comments-section">
+                {post.comments.length === 0 ? (
+                  <p className="no-comments">No comments yet. Be the first to share your thoughts!</p>
+                ) : (
+                  post.comments.map(comment => (
+                    <div key={comment.id} className="comment-item">
+                      <span className={`avatar-dot accent-${comment.accent} small-avatar`}>{comment.authorInitials}</span>
+                      <div className="comment-content">
+                        <div className="comment-author">
+                          <strong>{comment.author}</strong>
+                          <small>{comment.timestamp}</small>
+                        </div>
+                        <p>{comment.text}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </article>
+        ))}
+      </div>
+    </div>
+  );
 }
