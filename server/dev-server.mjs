@@ -70,8 +70,11 @@ function loadLocalEnv(filePath) {
 
 async function handleRelevanceCheck(req, res) {
   const body = await readJsonBody(req);
-  const hcp = getHcp(body.hcpId);
-  const newsletter = getNewsletter(body.newsletterId);
+  const baseHcp = getHcp(body.hcpId);
+  const hcp = mergeHcpOverride(baseHcp, body.hcp);
+  const newsletter = body.newsletter
+    ? sanitizeNewsletter(body.newsletter, body.newsletterId)
+    : getNewsletter(body.newsletterId);
   const preferLive = body.preferLive !== false;
 
   res.writeHead(200, {
@@ -367,8 +370,16 @@ function buildFallbackDecision(hcp, newsletter) {
 }
 
 function getMatchedClinicalTraits(hcp, newsletter) {
+  const searchableNewsletterText = [
+    newsletter.title,
+    newsletter.topic,
+    newsletter.keyTakeaway,
+    newsletter.content,
+    ...newsletter.clinicalSignals
+  ].join(' ');
+
   return hcp.relevanceProfile.traits.filter((trait) =>
-    newsletter.clinicalSignals.some((signal) => hasOverlap(signal, trait))
+    hasOverlap(searchableNewsletterText, trait)
   );
 }
 
@@ -401,6 +412,97 @@ function getNewsletter(newsletterId) {
   const newsletter = demoData.newsletters.find((candidate) => candidate.id === newsletterId);
   if (!newsletter) throw new Error(`Unknown Newsletter: ${newsletterId}`);
   return newsletter;
+}
+
+function mergeHcpOverride(baseHcp, override) {
+  if (!override || typeof override !== 'object') return baseHcp;
+
+  const overrideProfile = override.relevanceProfile;
+  if (!overrideProfile || typeof overrideProfile !== 'object') return baseHcp;
+
+  return {
+    ...baseHcp,
+    relevanceProfile: {
+      summary: sanitizeText(
+        overrideProfile.summary,
+        baseHcp.relevanceProfile.summary,
+        900
+      ),
+      traits: sanitizeStringArray(
+        overrideProfile.traits,
+        baseHcp.relevanceProfile.traits,
+        18,
+        120
+      ),
+      domains: sanitizeStringArray(
+        overrideProfile.domains,
+        baseHcp.relevanceProfile.domains,
+        10,
+        80
+      )
+    }
+  };
+}
+
+function sanitizeNewsletter(newsletter, fallbackId) {
+  if (!newsletter || typeof newsletter !== 'object') {
+    throw new Error('Custom Newsletter payload is missing');
+  }
+
+  const content = sanitizeText(newsletter.content, '', 16000);
+  if (!content) {
+    throw new Error('Custom Newsletter content is required');
+  }
+
+  const title = sanitizeText(newsletter.title, 'Custom Newsletter', 180);
+
+  return {
+    id: sanitizeId(newsletter.id, fallbackId || 'newsletter-custom-upload'),
+    title,
+    source: sanitizeText(newsletter.source, 'Tester upload', 120),
+    publishedAt: sanitizeText(newsletter.publishedAt, new Date().toISOString().slice(0, 10), 30),
+    readingTime: sanitizeText(newsletter.readingTime, 'Custom', 30),
+    topic: sanitizeText(newsletter.topic, 'Custom newsletter', 120),
+    sourceUrl: sanitizeText(newsletter.sourceUrl, '#', 500),
+    clinicalSignals: sanitizeStringArray(
+      newsletter.clinicalSignals,
+      [title, sanitizeText(newsletter.topic, '', 120)],
+      12,
+      120
+    ),
+    keyTakeaway: sanitizeText(newsletter.keyTakeaway, content.slice(0, 220), 500),
+    content
+  };
+}
+
+function sanitizeId(value, fallback) {
+  const text = sanitizeText(value, fallback, 120);
+  return text.replace(/[^a-zA-Z0-9:_-]/g, '-').replace(/-+/g, '-');
+}
+
+function sanitizeText(value, fallback, maxLength) {
+  const text = typeof value === 'string' ? value.trim() : '';
+  return (text || fallback).slice(0, maxLength);
+}
+
+function sanitizeStringArray(value, fallback, maxItems, maxLength) {
+  const source = Array.isArray(value) ? value : fallback;
+  const seen = new Set();
+  const sanitized = [];
+
+  for (const item of source) {
+    if (typeof item !== 'string') continue;
+
+    const text = item.trim().slice(0, maxLength);
+    const key = normalize(text);
+    if (!text || seen.has(key)) continue;
+
+    seen.add(key);
+    sanitized.push(text);
+    if (sanitized.length >= maxItems) break;
+  }
+
+  return sanitized.length ? sanitized : fallback.slice(0, maxItems);
 }
 
 async function readJsonBody(req) {

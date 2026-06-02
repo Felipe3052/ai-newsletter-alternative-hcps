@@ -297,60 +297,60 @@
       "title": "EGFR Lung Cancer Therapy Update",
       "source": "Swiss Oncology Digest",
       "publishedAt": "2026-05-10",
-      "readingTime": "5 min",
+      "readingTime": "9 min",
       "topic": "Thoracic oncology",
       "sourceUrl": "https://example.org/newsletters/egfr-lung-update",
       "clinicalSignals": ["EGFR-positive metastatic lung cancer", "CNS surveillance in lung cancer", "Thoracic oncology"],
       "keyTakeaway": "New trial data may change monitoring and sequencing conversations for EGFR-positive metastatic lung cancer.",
-      "content": "This issue reviews new phase III data in EGFR-positive metastatic non-small cell lung cancer, with a focus on intracranial disease control, sequencing after osimertinib, and monitoring strategies for patients with CNS risk. The newsletter also summarizes a short expert discussion on when to reassess molecular status at progression. A final administrative section lists upcoming tumor board dates."
+      "content": "Clinical context: This issue focuses on EGFR-positive metastatic non-small cell lung cancer and how recent phase III data may affect monitoring and treatment-sequencing conversations. The lead article reviews outcomes for patients with exon 19 deletion and L858R mutations, with particular attention to intracranial disease control, time to CNS progression, and the practical question of when to reassess molecular status after progression on first-line osimertinib.\n\nKey data discussed: The newsletter summarizes a new dataset showing improved intracranial response durability in a subgroup with baseline CNS risk, plus a separate expert commentary on sequencing after osimertinib. It highlights that clinicians may need to review MRI surveillance cadence, document CNS symptom triggers more explicitly, and plan earlier molecular re-testing when systemic progression is suspected.\n\nPractice implications: For thoracic oncology teams, the most relevant section is the decision support checklist: confirm EGFR mutation subtype, assess CNS risk, document current TKI exposure, decide whether plasma or tissue re-testing is feasible, and discuss trial referral for resistance mechanisms when available. The article is framed as information triage and does not recommend an individual treatment choice.\n\nSafety and operations notes: A short safety sidebar reminds teams to review pneumonitis risk, dermatologic toxicity, diarrhea management, and drug interaction checks when treatment changes are being considered. The final section includes administrative tumor board dates and a registration reminder, which are lower relevance than the clinical update."
     },
     {
       "id": "newsletter-heart-failure",
       "title": "Heart Failure Guideline Brief",
       "source": "CardioPractice Weekly",
       "publishedAt": "2026-05-08",
-      "readingTime": "6 min",
+      "readingTime": "8 min",
       "topic": "Cardiology",
       "sourceUrl": "https://example.org/newsletters/heart-failure-guideline-brief",
       "clinicalSignals": ["Heart failure with reduced ejection fraction", "SGLT2 inhibitor use in heart failure", "Iron deficiency in heart failure"],
       "keyTakeaway": "Updated guidance emphasizes early optimization of foundational therapy and iron deficiency review in HFrEF.",
-      "content": "The guideline brief highlights earlier initiation and dose optimization of foundational therapy in heart failure with reduced ejection fraction. It includes practical notes on SGLT2 inhibitor use, iron deficiency screening, and follow-up after recent decompensation. A short side column covers patient education materials for home weight monitoring."
+      "content": "Clinical context: This brief covers heart failure with reduced ejection fraction and the persistent gap between guideline recommendations and real-world therapy optimization. It opens with a short case vignette of a patient recently discharged after decompensation, then maps the follow-up visit to medication review, volume status, renal function, and patient education.\n\nKey guidance points: The newsletter emphasizes earlier review of foundational therapy, including ARNI or ACE/ARB status, beta blocker titration, mineralocorticoid receptor antagonist eligibility, and SGLT2 inhibitor continuation. It also flags iron deficiency screening as a recurring missed opportunity, especially for patients with ongoing fatigue, recent hospitalization, or reduced exercise tolerance.\n\nPractice implications: The most actionable section is a visit checklist for HFrEF review: confirm current doses, check blood pressure and renal function, assess congestion, review SGLT2 inhibitor tolerance, screen for iron deficiency, and schedule follow-up after recent medication changes. A short sidebar suggests how practices can standardize home weight monitoring education.\n\nSafety and operations notes: The brief includes cautions around renal dosing, hypotension, hyperkalemia, and post-discharge timing. It also includes a downloadable patient handout and a webinar registration link, but those are secondary to the clinical workflow update."
     },
     {
       "id": "newsletter-diabetes-ckd",
       "title": "Diabetes and CKD Medication Update",
       "source": "Metabolic Care Notes",
       "publishedAt": "2026-05-06",
-      "readingTime": "4 min",
+      "readingTime": "8 min",
       "topic": "Endocrinology",
       "sourceUrl": "https://example.org/newsletters/diabetes-ckd-update",
       "clinicalSignals": ["Type 2 diabetes with CKD", "Albuminuria risk reduction", "SGLT2 inhibitor kidney protection", "GLP-1 receptor agonist therapy"],
       "keyTakeaway": "The update summarizes kidney-risk reduction data for diabetes patients with albuminuria and obesity-related metabolic risk.",
-      "content": "This newsletter summarizes medication evidence for type 2 diabetes with chronic kidney disease, including albuminuria risk reduction, SGLT2 inhibitor continuation thresholds, and GLP-1 receptor agonist considerations for patients with obesity. It includes a practical checklist for reviewing kidney and cardiovascular risk at routine follow-up."
+      "content": "Clinical context: This update is written for clinicians managing type 2 diabetes with chronic kidney disease, albuminuria, obesity, and cardiovascular risk. It starts with the observation that many patients with diabetes and CKD have separate medication reviews for glycemic control, kidney protection, and weight management, even though these decisions often overlap.\n\nKey evidence discussed: The newsletter summarizes kidney-risk reduction data for SGLT2 inhibitors, including albuminuria-related endpoints and practical continuation thresholds when kidney function declines. It also reviews GLP-1 receptor agonist considerations for patients with obesity-related metabolic risk and discusses how weight, adherence, gastrointestinal tolerability, and cardiovascular risk may influence shared decision-making.\n\nPractice implications: The recommended follow-up checklist asks clinicians to review eGFR trend, UACR category, current SGLT2 inhibitor use, GLP-1 receptor agonist suitability, hypoglycemia risk, blood pressure targets, statin use, and patient goals for weight and kidney-risk reduction. The newsletter includes a short section on patient counseling language for explaining why kidney-protective therapy may be continued even when glucose effects are modest.\n\nSafety and operations notes: The safety sidebar covers sick-day rules, genital infection counseling, dehydration risk, gastrointestinal tolerability, and coordination with nephrology when albuminuria progresses. The final section lists upcoming metabolic clinic education events."
     },
     {
       "id": "newsletter-rheum-safety",
       "title": "Rheumatology Biologic Safety Alert",
       "source": "Inflammatory Disease Monitor",
       "publishedAt": "2026-05-04",
-      "readingTime": "5 min",
+      "readingTime": "8 min",
       "topic": "Rheumatology",
       "sourceUrl": "https://example.org/newsletters/rheumatology-biologic-safety",
       "clinicalSignals": ["Rheumatoid arthritis on JAK inhibitor", "Herpes zoster vaccination", "Infection risk with targeted therapy", "Psoriatic arthritis on IL-17 inhibitor"],
       "keyTakeaway": "Safety checklist updates may affect targeted therapy reviews in inflammatory arthritis.",
-      "content": "This safety alert reviews infection-risk screening and vaccination timing for patients receiving JAK inhibitors and biologic therapy. It highlights herpes zoster prevention, tuberculosis review, and practical documentation points before therapy switches in rheumatoid arthritis and psoriatic arthritis."
+      "content": "Clinical context: This safety alert is aimed at rheumatology teams caring for patients with inflammatory arthritis who receive targeted synthetic or biologic therapy. It focuses on rheumatoid arthritis patients on JAK inhibitors and psoriatic arthritis patients receiving IL-17 inhibitors, with a practical lens on infection-risk review before therapy continuation or switching.\n\nKey safety updates: The newsletter reviews herpes zoster vaccination timing, tuberculosis screening documentation, recurrent infection history, and coordination with primary care for age-appropriate vaccination. It highlights how missed vaccination status can delay therapy changes and how incomplete infection-risk documentation can complicate shared decision-making.\n\nPractice implications: The checklist section recommends confirming current targeted therapy, last infection episode, vaccination status, TB screening date, steroid exposure, biologic sequencing history, and patient-reported infection concerns. It includes a short example of how to document risk review before switching therapy in rheumatoid arthritis or psoriatic arthritis.\n\nSafety and operations notes: The newsletter does not recommend a specific drug choice. It frames the information as a clinic workflow and safety documentation update. A final operations section lists an upcoming inflammatory disease webinar and template language for nurse-led pre-visit screening."
     },
     {
       "id": "newsletter-oncology-support",
       "title": "Oncology Supportive Care Brief",
       "source": "Cancer Care Operations",
       "publishedAt": "2026-05-02",
-      "readingTime": "7 min",
+      "readingTime": "9 min",
       "topic": "Oncology support",
       "sourceUrl": "https://example.org/newsletters/oncology-supportive-care",
       "clinicalSignals": ["Immune-related adverse event management", "Chemotherapy-induced nausea and vomiting", "Febrile neutropenia prevention", "Antiemetic planning", "Oncology medication safety"],
       "keyTakeaway": "Supportive-care updates may help teams triage immune-related toxicity and prevent avoidable treatment interruptions.",
-      "content": "This brief covers supportive-care updates for oncology teams, including immune-related adverse-event triage, antiemetic planning for highly emetogenic regimens, and febrile neutropenia prevention workflows. It also includes practical counseling points for patients taking oral targeted therapies."
+      "content": "Clinical context: This supportive-care brief is written for oncology nurses, clinical pharmacists, and day-unit teams who manage adverse-event calls, treatment education, antiemetic planning, and medication safety. It focuses on avoiding preventable treatment interruptions by improving triage of immune-related toxicity, chemotherapy-induced nausea and vomiting, febrile neutropenia risk, and oral targeted therapy adherence.\n\nKey workflow updates: The newsletter summarizes a revised call-triage script for suspected immune-related adverse events, including symptom onset, grade indicators, steroid exposure, and when to escalate to the treating oncologist. It also reviews antiemetic planning for highly emetogenic regimens, with attention to breakthrough nausea, delayed symptoms, and patient-specific barriers to adherence.\n\nPractice implications: The most actionable section is a supportive-care huddle checklist: confirm regimen emetogenicity, document antiemetic plan, flag neutropenia risk, review fever instructions, check oral therapy interactions, and ensure patients know which symptoms require urgent contact. It includes sample counseling points for oral TKI adherence and a reminder to document medication reconciliation before each cycle.\n\nSafety and operations notes: The newsletter includes operational suggestions for nurse-pharmacist collaboration and a short case example where early immune-related adverse-event triage prevented an avoidable emergency visit. It also includes a low-priority note about a staff education session."
     },
     {
       "id": "newsletter-admin-congress",
@@ -362,7 +362,7 @@
       "sourceUrl": "https://example.org/newsletters/congress-parking-update",
       "clinicalSignals": ["Conference registration", "Parking logistics", "Badge pickup"],
       "keyTakeaway": "Administrative logistics for an upcoming congress and badge pickup.",
-      "content": "Registration is open for the annual hospital education congress. The newsletter lists badge pickup windows, parking instructions, room changes, and catering details. It does not include disease-specific, medication-specific, or practice-changing clinical content."
+      "content": "Administrative context: Registration is open for the annual hospital education congress. The newsletter lists badge pickup windows, parking instructions, room changes, catering details, and reminders about session sign-in requirements.\n\nOperational details: Attendees are asked to collect badges between 07:30 and 09:00, use the east visitor parking garage, and check the updated room map before arriving. The email includes a list of plenary session titles, but it does not provide disease-specific, medication-specific, patient-panel-specific, or practice-changing clinical content.\n\nRelevance implications: This item may be useful for general logistics but should not trigger a clinical push based on patient data. It is included in the demo to show that the engine can suppress administrative newsletters even when they are legitimate communications."
     }
   ]
 }

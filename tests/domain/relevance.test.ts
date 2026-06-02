@@ -23,6 +23,27 @@ describe('fallback Relevance Decisions', () => {
     expect(decision.score).toBeLessThan(20);
   });
 
+  it('matches custom Newsletter content even when curated clinical signals are missing', () => {
+    const hcp = getHcp('hcp-cardiology-fischer');
+    const newsletter = {
+      ...getNewsletter('newsletter-admin-congress'),
+      id: 'newsletter-custom-upload',
+      title: 'Tester supplied HFrEF update',
+      source: 'Tester upload',
+      topic: 'Cardiology',
+      clinicalSignals: [],
+      keyTakeaway: 'The pasted Newsletter highlights HFrEF follow-up workflow changes.',
+      content:
+        'This pasted Newsletter discusses heart failure with reduced ejection fraction, SGLT2 inhibitor use in heart failure, iron deficiency in heart failure, and post-discharge medication optimization.'
+    };
+
+    const decision = buildFallbackDecision(hcp, newsletter, '2026-05-17T12:00:00.000Z');
+
+    expect(decision.push).toBe(true);
+    expect(decision.matchedClinicalTraits).toContain('Heart failure with reduced ejection fraction');
+    expect(decision.matchedClinicalTraits).toContain('Iron deficiency in heart failure');
+  });
+
   it('does not expose Source Patient Record names in Relevance Decisions', () => {
     const hcp = getHcp('hcp-oncology-pharmacy-rossi');
     const newsletter = getNewsletter('newsletter-oncology-support');

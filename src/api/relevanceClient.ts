@@ -1,8 +1,10 @@
-import type { RelevanceDecision, StreamEvent } from '../domain/types';
+import type { Hcp, Newsletter, RelevanceDecision, StreamEvent } from '../domain/types';
 
 export type RunRelevanceCheckInput = {
   hcpId: string;
   newsletterId: string;
+  hcp?: Hcp;
+  newsletter?: Newsletter;
   preferLive?: boolean;
   onEvent: (event: StreamEvent) => void;
 };
@@ -10,13 +12,15 @@ export type RunRelevanceCheckInput = {
 export async function runRelevanceCheck({
   hcpId,
   newsletterId,
+  hcp,
+  newsletter,
   preferLive = true,
   onEvent
 }: RunRelevanceCheckInput): Promise<RelevanceDecision> {
   const response = await fetch('/api/relevance/check', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ hcpId, newsletterId, preferLive })
+    body: JSON.stringify({ hcpId, newsletterId, hcp, newsletter, preferLive })
   });
 
   if (!response.ok || !response.body) {

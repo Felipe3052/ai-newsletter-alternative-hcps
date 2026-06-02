@@ -8,6 +8,7 @@ import {
   Lock,
   MessageSquare,
   Newspaper,
+  Plus,
   RefreshCcw,
   Send,
   Settings,
@@ -52,6 +53,26 @@ type NewsletterBroadcastRun = {
   error?: string;
 };
 
+type HcpProfileOverrides = Record<string, Hcp['relevanceProfile']>;
+
+type CustomNewsletterDraft = {
+  title: string;
+  source: string;
+  topic: string;
+  keyTakeaway: string;
+  content: string;
+};
+
+const customNewsletterId = 'newsletter-custom-upload';
+
+const emptyCustomNewsletterDraft: CustomNewsletterDraft = {
+  title: '',
+  source: 'Tester upload',
+  topic: '',
+  keyTakeaway: '',
+  content: ''
+};
+
 const tabs: Array<{ id: TabId; label: string; icon: typeof ShieldCheck }> = [
   { id: 'anonymization', label: 'Anonymization', icon: ShieldCheck },
   { id: 'newsletters', label: 'Newsletters', icon: Newspaper },
@@ -80,16 +101,39 @@ export function App() {
   const [isChecking, setIsChecking] = useState(false);
   const [inboxByHcp, setInboxByHcp] = useState<Record<string, InboxItem[]>>({});
   const [newsletterBroadcastRun, setNewsletterBroadcastRun] = useState<NewsletterBroadcastRun | null>(null);
+  const [hcpProfileOverrides, setHcpProfileOverrides] = useState<HcpProfileOverrides>({});
+  const [customNewsletterDraft, setCustomNewsletterDraft] =
+    useState<CustomNewsletterDraft>(emptyCustomNewsletterDraft);
+
+  const hcps = useMemo(
+    () =>
+      data.hcps.map((hcp) =>
+        hcpProfileOverrides[hcp.id]
+          ? { ...hcp, relevanceProfile: hcpProfileOverrides[hcp.id] }
+          : hcp
+      ),
+    [hcpProfileOverrides]
+  );
+
+  const customNewsletter = useMemo(
+    () => buildCustomNewsletter(customNewsletterDraft),
+    [customNewsletterDraft]
+  );
+
+  const newsletters = useMemo(
+    () => (customNewsletter ? [customNewsletter, ...data.newsletters] : data.newsletters),
+    [customNewsletter]
+  );
 
   const selectedHcp = useMemo(
-    () => data.hcps.find((hcp) => hcp.id === selectedHcpId) ?? data.hcps[0],
-    [selectedHcpId]
+    () => hcps.find((hcp) => hcp.id === selectedHcpId) ?? hcps[0],
+    [hcps, selectedHcpId]
   );
   const selectedNewsletter = useMemo(
     () =>
-      data.newsletters.find((newsletter) => newsletter.id === selectedNewsletterId) ??
-      data.newsletters[0],
-    [selectedNewsletterId]
+      newsletters.find((newsletter) => newsletter.id === selectedNewsletterId) ??
+      newsletters[0],
+    [newsletters, selectedNewsletterId]
   );
   const anonymizedProfiles = useMemo(() => anonymizePanel(selectedHcp), [selectedHcp]);
   const selectedInbox = inboxByHcp[selectedHcp.id] ?? [];
@@ -134,6 +178,8 @@ export function App() {
       const decision = await runRelevanceCheck({
         hcpId: selectedHcp.id,
         newsletterId: selectedNewsletter.id,
+        hcp: selectedHcp,
+        newsletter: selectedNewsletter,
         onEvent: (event) => {
           if (event.type === 'status') {
             setStatus(event.status);
@@ -163,7 +209,7 @@ export function App() {
 
   const handleRunNewsletterBroadcast = async () => {
     const newsletter = selectedNewsletter;
-    const totalCount = data.hcps.length;
+    const totalCount = hcps.length;
     const completedDecisions: RelevanceDecision[] = [];
 
     setIsChecking(true);
@@ -180,7 +226,7 @@ export function App() {
     });
 
     try {
-      for (const hcp of data.hcps) {
+      for (const hcp of hcps) {
         setStreamText(`Checking ${hcp.name} against "${newsletter.title}"...\n`);
         setStatus('comparing');
         setStatusMessage(`Checking ${hcp.name}'s HCP Relevance Profile`);
@@ -193,6 +239,8 @@ export function App() {
         const decision = await runRelevanceCheck({
           hcpId: hcp.id,
           newsletterId: newsletter.id,
+          hcp,
+          newsletter,
           onEvent: (event) => {
             if (event.type === 'status') {
               setStatus(event.status);
@@ -234,7 +282,7 @@ export function App() {
 
       if (firstPushedDecision) {
         const pushedHcp =
-          data.hcps.find((hcp) => hcp.id === firstPushedDecision.hcpId) ?? data.hcps[0];
+          hcps.find((hcp) => hcp.id === firstPushedDecision.hcpId) ?? hcps[0];
         setSelectedHcpId(firstPushedDecision.hcpId);
         setStreamText(
           [
@@ -259,6 +307,34 @@ export function App() {
     } finally {
       setIsChecking(false);
     }
+  };
+
+  const handleUpdateHcpProfile = (hcpId: string, profile: Hcp['relevanceProfile']) => {
+    setHcpProfileOverrides((current) => ({
+      ...current,
+      [hcpId]: profile
+    }));
+  };
+
+  const handleResetHcpProfile = (hcpId: string) => {
+    setHcpProfileOverrides((current) => {
+      const next = { ...current };
+      delete next[hcpId];
+      return next;
+    });
+  };
+
+  const handleUpdateCustomNewsletterDraft = (patch: Partial<CustomNewsletterDraft>) => {
+    setCustomNewsletterDraft((current) => ({
+      ...current,
+      ...patch
+    }));
+  };
+
+  const handleUseCustomNewsletter = () => {
+    if (!customNewsletter) return;
+    setSelectedNewsletterId(customNewsletter.id);
+    setNewsletterBroadcastRun(null);
   };
 
   const handleReset = () => {
@@ -317,7 +393,7 @@ export function App() {
         {activeTab === 'anonymization' ? (
           <AnonymizationTab
             hcp={selectedHcp}
-            hcps={data.hcps}
+            hcps={hcps}
             anonymizedProfiles={anonymizedProfiles}
             onSelectHcp={setSelectedHcpId}
           />
@@ -325,13 +401,16 @@ export function App() {
 
         {activeTab === 'newsletters' ? (
           <NewslettersTab
-            hcps={data.hcps}
-            newsletters={data.newsletters}
+            hcps={hcps}
+            newsletters={newsletters}
             selectedNewsletter={selectedNewsletter}
+            customNewsletterDraft={customNewsletterDraft}
             broadcastRun={newsletterBroadcastRun}
             streamText={streamText}
             isChecking={isChecking}
             onSelectNewsletter={setSelectedNewsletterId}
+            onUpdateCustomNewsletterDraft={handleUpdateCustomNewsletterDraft}
+            onUseCustomNewsletter={handleUseCustomNewsletter}
             onRunNewsletterCheck={handleRunNewsletterBroadcast}
           />
         ) : null}
@@ -349,8 +428,8 @@ export function App() {
 
         {activeTab === 'app' ? (
           <HcpAppTab
-            hcps={data.hcps}
-            newsletters={data.newsletters}
+            hcps={hcps}
+            newsletters={newsletters}
             selectedHcp={selectedHcp}
             selectedNewsletter={selectedNewsletter}
             selectedInbox={selectedInbox}
@@ -361,6 +440,8 @@ export function App() {
             isChecking={isChecking}
             onSelectHcp={setSelectedHcpId}
             onSelectNewsletter={setSelectedNewsletterId}
+            onUpdateHcpProfile={handleUpdateHcpProfile}
+            onResetHcpProfile={handleResetHcpProfile}
             onRunCheck={handleRunCheck}
             onReset={handleReset}
           />
@@ -391,6 +472,8 @@ function HcpAppTab({
   isChecking,
   onSelectHcp,
   onSelectNewsletter,
+  onUpdateHcpProfile,
+  onResetHcpProfile,
   onRunCheck,
   onReset
 }: {
@@ -406,6 +489,8 @@ function HcpAppTab({
   isChecking: boolean;
   onSelectHcp: (hcpId: string) => void;
   onSelectNewsletter: (newsletterId: string) => void;
+  onUpdateHcpProfile: (hcpId: string, profile: Hcp['relevanceProfile']) => void;
+  onResetHcpProfile: (hcpId: string) => void;
   onRunCheck: () => void;
   onReset: () => void;
 }) {
@@ -429,6 +514,13 @@ function HcpAppTab({
             </button>
           ))}
         </div>
+
+        <HcpFilterEditor
+          hcp={selectedHcp}
+          isChecking={isChecking}
+          onUpdateProfile={onUpdateHcpProfile}
+          onResetProfile={onResetHcpProfile}
+        />
 
         <SectionLabel icon={Newspaper} label="Newsletter" />
         <select
@@ -466,6 +558,120 @@ function HcpAppTab({
         <LatestDecisionCard decision={latestDecision} streamText={streamText} />
       </aside>
     </section>
+  );
+}
+
+function HcpFilterEditor({
+  hcp,
+  isChecking,
+  onUpdateProfile,
+  onResetProfile
+}: {
+  hcp: Hcp;
+  isChecking: boolean;
+  onUpdateProfile: (hcpId: string, profile: Hcp['relevanceProfile']) => void;
+  onResetProfile: (hcpId: string) => void;
+}) {
+  const [newTrait, setNewTrait] = useState('');
+  const profile = hcp.relevanceProfile;
+
+  const updateProfile = (patch: Partial<Hcp['relevanceProfile']>) => {
+    onUpdateProfile(hcp.id, {
+      ...profile,
+      ...patch
+    });
+  };
+
+  const handleAddTrait = () => {
+    const trait = newTrait.trim();
+    if (!trait) return;
+
+    const alreadyExists = profile.traits.some(
+      (currentTrait) => currentTrait.toLowerCase() === trait.toLowerCase()
+    );
+    if (alreadyExists) {
+      setNewTrait('');
+      return;
+    }
+
+    updateProfile({ traits: [...profile.traits, trait] });
+    setNewTrait('');
+  };
+
+  const handleRemoveTrait = (traitToRemove: string) => {
+    updateProfile({
+      traits: profile.traits.filter((trait) => trait !== traitToRemove)
+    });
+  };
+
+  return (
+    <div className="filter-editor">
+      <SectionLabel icon={Settings} label="HCP filter" />
+      <label className="field-label" htmlFor="hcp-filter-summary">
+        Profile summary
+      </label>
+      <textarea
+        id="hcp-filter-summary"
+        className="text-area filter-summary"
+        value={profile.summary}
+        onChange={(event) => updateProfile({ summary: event.target.value })}
+        disabled={isChecking}
+      />
+
+      <div className="editable-trait-cloud">
+        {profile.traits.map((trait) => (
+          <button
+            key={trait}
+            type="button"
+            className="trait-pill-button"
+            onClick={() => handleRemoveTrait(trait)}
+            disabled={isChecking}
+            aria-label={`Remove ${trait}`}
+            title={`Remove ${trait}`}
+          >
+            <span>{trait}</span>
+            <X size={13} />
+          </button>
+        ))}
+      </div>
+
+      <div className="inline-field-row">
+        <input
+          className="text-input"
+          type="text"
+          aria-label="Add filter trait"
+          placeholder="Add clinical trait"
+          value={newTrait}
+          onChange={(event) => setNewTrait(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              handleAddTrait();
+            }
+          }}
+          disabled={isChecking}
+        />
+        <button
+          className="secondary-action icon-text-action"
+          type="button"
+          onClick={handleAddTrait}
+          disabled={isChecking || !newTrait.trim()}
+        >
+          <Plus size={16} />
+          <span>Add filter trait</span>
+        </button>
+      </div>
+
+      <button
+        className="secondary-action compact-action"
+        type="button"
+        onClick={() => onResetProfile(hcp.id)}
+        disabled={isChecking}
+      >
+        <RefreshCcw size={14} />
+        <span>Reset filter</span>
+      </button>
+    </div>
   );
 }
 
@@ -552,19 +758,25 @@ function NewslettersTab({
   hcps,
   newsletters,
   selectedNewsletter,
+  customNewsletterDraft,
   broadcastRun,
   streamText,
   isChecking,
   onSelectNewsletter,
+  onUpdateCustomNewsletterDraft,
+  onUseCustomNewsletter,
   onRunNewsletterCheck
 }: {
   hcps: Hcp[];
   newsletters: Newsletter[];
   selectedNewsletter: Newsletter;
+  customNewsletterDraft: CustomNewsletterDraft;
   broadcastRun: NewsletterBroadcastRun | null;
   streamText: string;
   isChecking: boolean;
   onSelectNewsletter: (newsletterId: string) => void;
+  onUpdateCustomNewsletterDraft: (patch: Partial<CustomNewsletterDraft>) => void;
+  onUseCustomNewsletter: () => void;
   onRunNewsletterCheck: () => void;
 }) {
   const runForSelectedNewsletter =
@@ -600,20 +812,29 @@ function NewslettersTab({
       </div>
 
       <div className="newsletter-grid">
-        <div className="newsletter-list">
-          {newsletters.map((newsletter) => (
-            <button
-              key={newsletter.id}
-              type="button"
-              className={`newsletter-row ${newsletter.id === selectedNewsletter.id ? 'is-selected' : ''}`}
-              onClick={() => onSelectNewsletter(newsletter.id)}
-              disabled={isChecking}
-            >
-              <span>{newsletter.topic}</span>
-              <strong>{newsletter.title}</strong>
-              <small>{newsletter.source} | {newsletter.readingTime}</small>
-            </button>
-          ))}
+        <div className="newsletter-source-column">
+          <CustomNewsletterComposer
+            draft={customNewsletterDraft}
+            isChecking={isChecking}
+            onChange={onUpdateCustomNewsletterDraft}
+            onUseCustomNewsletter={onUseCustomNewsletter}
+          />
+
+          <div className="newsletter-list">
+            {newsletters.map((newsletter) => (
+              <button
+                key={newsletter.id}
+                type="button"
+                className={`newsletter-row ${newsletter.id === selectedNewsletter.id ? 'is-selected' : ''}`}
+                onClick={() => onSelectNewsletter(newsletter.id)}
+                disabled={isChecking}
+              >
+                <span>{newsletter.topic}</span>
+                <strong>{newsletter.title}</strong>
+                <small>{newsletter.source} | {newsletter.readingTime}</small>
+              </button>
+            ))}
+          </div>
         </div>
 
         <article className="newsletter-detail">
@@ -624,7 +845,11 @@ function NewslettersTab({
           </div>
           <h2>{selectedNewsletter.title}</h2>
           <p className="lead">{selectedNewsletter.keyTakeaway}</p>
-          <p>{selectedNewsletter.content}</p>
+          <div className="newsletter-body">
+            {selectedNewsletter.content.split(/\n+/).map((paragraph, index) => (
+              <p key={`${selectedNewsletter.id}-paragraph-${index}`}>{paragraph}</p>
+            ))}
+          </div>
           <div className="trait-cloud">
             {selectedNewsletter.clinicalSignals.map((signal) => (
               <span key={signal}>{signal}</span>
@@ -644,6 +869,132 @@ function NewslettersTab({
         />
       </div>
     </section>
+  );
+}
+
+function CustomNewsletterComposer({
+  draft,
+  isChecking,
+  onChange,
+  onUseCustomNewsletter
+}: {
+  draft: CustomNewsletterDraft;
+  isChecking: boolean;
+  onChange: (patch: Partial<CustomNewsletterDraft>) => void;
+  onUseCustomNewsletter: () => void;
+}) {
+  const canUseCustomNewsletter = draft.content.trim().length > 0;
+
+  const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const content = typeof reader.result === 'string' ? reader.result : '';
+      const titleFromFile = file.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ');
+      onChange({
+        content,
+        title: draft.title.trim() || titleFromFile
+      });
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+  };
+
+  return (
+    <article className="custom-newsletter-panel">
+      <SectionLabel icon={FileText} label="Tester Newsletter" />
+
+      <label className="field-label" htmlFor="custom-newsletter-title">
+        Custom Newsletter title
+      </label>
+      <input
+        id="custom-newsletter-title"
+        className="text-input"
+        type="text"
+        value={draft.title}
+        onChange={(event) => onChange({ title: event.target.value })}
+        disabled={isChecking}
+        placeholder="Paste or upload a title"
+      />
+
+      <div className="form-grid two-up">
+        <div>
+          <label className="field-label" htmlFor="custom-newsletter-source">
+            Custom Newsletter source
+          </label>
+          <input
+            id="custom-newsletter-source"
+            className="text-input"
+            type="text"
+            value={draft.source}
+            onChange={(event) => onChange({ source: event.target.value })}
+            disabled={isChecking}
+          />
+        </div>
+        <div>
+          <label className="field-label" htmlFor="custom-newsletter-topic">
+            Custom Newsletter topic
+          </label>
+          <input
+            id="custom-newsletter-topic"
+            className="text-input"
+            type="text"
+            value={draft.topic}
+            onChange={(event) => onChange({ topic: event.target.value })}
+            disabled={isChecking}
+            placeholder="e.g. Cardiology"
+          />
+        </div>
+      </div>
+
+      <label className="field-label" htmlFor="custom-newsletter-takeaway">
+        Custom Newsletter key takeaway
+      </label>
+      <textarea
+        id="custom-newsletter-takeaway"
+        className="text-area compact-text-area"
+        value={draft.keyTakeaway}
+        onChange={(event) => onChange({ keyTakeaway: event.target.value })}
+        disabled={isChecking}
+        placeholder="Short push-summary seed"
+      />
+
+      <label className="field-label" htmlFor="custom-newsletter-text">
+        Custom Newsletter text
+      </label>
+      <textarea
+        id="custom-newsletter-text"
+        className="text-area newsletter-upload-area"
+        value={draft.content}
+        onChange={(event) => onChange({ content: event.target.value })}
+        disabled={isChecking}
+        placeholder="Paste the full Newsletter text here"
+      />
+
+      <div className="custom-newsletter-actions">
+        <label className={`secondary-action file-import-action ${isChecking ? 'is-disabled' : ''}`}>
+          <FileText size={15} />
+          <span>Import text file</span>
+          <input
+            type="file"
+            accept=".txt,.md,.text,text/plain,text/markdown"
+            onChange={handleFileImport}
+            disabled={isChecking}
+          />
+        </label>
+        <button
+          className="primary-action"
+          type="button"
+          onClick={onUseCustomNewsletter}
+          disabled={isChecking || !canUseCustomNewsletter}
+        >
+          <Send size={16} />
+          <span>Use custom newsletter</span>
+        </button>
+      </div>
+    </article>
   );
 }
 
@@ -1106,6 +1457,55 @@ function formatDate(value: string): string {
     day: 'numeric',
     year: 'numeric'
   }).format(new Date(value));
+}
+
+function buildCustomNewsletter(draft: CustomNewsletterDraft): Newsletter | null {
+  const content = draft.content.trim();
+  if (!content) return null;
+
+  const title = draft.title.trim() || 'Custom Newsletter';
+  const source = draft.source.trim() || 'Tester upload';
+  const topic = draft.topic.trim() || 'Custom newsletter';
+  const keyTakeaway = draft.keyTakeaway.trim() || firstSentence(content);
+
+  return {
+    id: customNewsletterId,
+    title,
+    source,
+    publishedAt: new Date().toISOString().slice(0, 10),
+    readingTime: estimateReadingTime(content),
+    topic,
+    sourceUrl: '#',
+    clinicalSignals: uniqueNonEmpty([topic, title, keyTakeaway]),
+    keyTakeaway,
+    content
+  };
+}
+
+function estimateReadingTime(content: string): string {
+  const wordCount = content.split(/\s+/).filter(Boolean).length;
+  return `${Math.max(1, Math.ceil(wordCount / 180))} min`;
+}
+
+function firstSentence(content: string): string {
+  const first = content.split(/(?<=[.!?])\s+/)[0]?.trim();
+  if (!first) return 'Tester supplied Newsletter content ready for relevance screening.';
+  return first.length > 240 ? `${first.slice(0, 237)}...` : first;
+}
+
+function uniqueNonEmpty(values: string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const value of values) {
+    const text = value.trim();
+    const key = text.toLowerCase();
+    if (!text || seen.has(key)) continue;
+    seen.add(key);
+    result.push(text);
+  }
+
+  return result;
 }
 
 // --- Recaps View Implementation ---

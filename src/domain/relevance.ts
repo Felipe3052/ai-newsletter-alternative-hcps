@@ -16,8 +16,16 @@ function hasOverlap(signal: string, trait: string): boolean {
 }
 
 export function getMatchedClinicalTraits(hcp: Hcp, newsletter: Newsletter): string[] {
+  const searchableNewsletterText = [
+    newsletter.title,
+    newsletter.topic,
+    newsletter.keyTakeaway,
+    newsletter.content,
+    ...newsletter.clinicalSignals
+  ].join(' ');
+
   return hcp.relevanceProfile.traits.filter((trait) =>
-    newsletter.clinicalSignals.some((signal) => hasOverlap(signal, trait))
+    hasOverlap(searchableNewsletterText, trait)
   );
 }
 
