@@ -3,6 +3,8 @@ import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createServer as createViteServer } from 'vite';
 
+process.env.NODE_ENV = 'development';
+
 const root = process.cwd();
 const port = Number(process.env.PORT ?? 5173);
 
