@@ -48,8 +48,10 @@ const server = createHttpServer(async (req, res) => {
   }
 });
 
-server.listen(port, '127.0.0.1', () => {
-  console.log(`Relevance Engine demo running at http://127.0.0.1:${port}`);
+// Bind to 0.0.0.0 on Render to allow external traffic routing, otherwise keep localhost locally
+const host = process.env.RENDER ? '0.0.0.0' : '127.0.0.1';
+server.listen(port, host, () => {
+  console.log(`Relevance Engine demo running at http://${host}:${port}`);
 });
 
 function loadLocalEnv(filePath) {

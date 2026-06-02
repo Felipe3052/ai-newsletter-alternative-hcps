@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Newsletter Alternative - HCP Demo Anleitung</title>
+    <style>
+        /* Modern System Font Stack */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            color: #2d3748;
+            line-height: 1.6;
+            margin: 0;
+            padding: 40px 20px;
+            background-color: #f7fafc;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            border: 1px solid #e2e8f0;
+        }
+
+        /* Header Styling */
+        header {
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 24px;
+            margin-bottom: 32px;
+        }
+
+        h1 {
+            color: #1a365d;
+            font-size: 28px;
+            margin: 0 0 8px 0;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            color: #4a5568;
+            font-size: 16px;
+            margin: 0;
+        }
+
+        /* Sections */
+        h2 {
+            color: #2b6cb0;
+            font-size: 20px;
+            margin-top: 32px;
+            margin-bottom: 16px;
+            font-weight: 600;
+            border-bottom: 1px solid #edf2f7;
+            padding-bottom: 8px;
+        }
+
+        p {
+            margin: 0 0 16px 0;
+        }
+
+        /* Steps Layout */
+        .step-list {
+            margin-bottom: 32px;
+        }
+
+        .step-card {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            position: relative;
+            padding-left: 60px;
+        }
+
+        .step-number {
+            position: absolute;
+            left: 18px;
+            top: 20px;
+            width: 30px;
+            height: 30px;
+            background-color: #3182ce;
+            color: #ffffff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 15px;
+        }
+
+        .step-title {
+            font-weight: 600;
+            color: #1a202c;
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+
+        .os-badge {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-right: 4px;
+        }
+        .os-win {
+            background-color: #ebf8ff;
+            color: #2b6cb0;
+        }
+        .os-mac {
+            background-color: #f7fafc;
+            color: #4a5568;
+            border: 1px solid #cbd5e0;
+        }
+
+        /* Commands Styling */
+        code {
+            font-family: Consolas, Monaco, "Andale Mono", monospace;
+            background-color: #edf2f7;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #805ad5;
+        }
+
+        pre {
+            background-color: #1a202c;
+            color: #f7fafc;
+            padding: 14px 18px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 12px 0;
+        }
+
+        pre code {
+            background-color: transparent;
+            padding: 0;
+            color: inherit;
+            font-size: 14px;
+        }
+
+        /* Lists */
+        ul, ol {
+            margin: 0 0 16px 0;
+            padding-left: 20px;
+        }
+
+        li {
+            margin-bottom: 6px;
+        }
+
+        /* Warning / Info Callouts */
+        .callout {
+            border-left: 4px solid #cbd5e0;
+            background-color: #f7fafc;
+            padding: 16px;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 24px;
+        }
+
+        .callout-prereq {
+            border-left-color: #3182ce;
+            background-color: #ebf8ff;
+        }
+
+        .callout-warning {
+            border-left-color: #dd6b20;
+            background-color: #fffaf0;
+        }
+
+        .callout-title {
+            font-weight: bold;
+            margin-bottom: 6px;
+            color: #2d3748;
+        }
+        .callout-prereq .callout-title {
+            color: #2b6cb0;
+        }
+        .callout-warning .callout-title {
+            color: #dd6b20;
+        }
+
+        a {
+            color: #3182ce;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        /* Highlight */
+        .highlight {
+            font-weight: 600;
+            color: #1a202c;
+        }
+
+        /* Print Optimization Styles */
+        @media print {
+            body {
+                background-color: #ffffff;
+                color: #000000;
+                padding: 0;
+            }
+
+            .container {
+                box-shadow: none;
+                border: none;
+                padding: 0;
+                max-width: 100%;
+            }
+
+            header {
+                border-bottom-color: #cbd5e0;
+            }
+
+            .step-card {
+                background-color: #ffffff;
+                border-color: #cbd5e0;
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+
+            .step-number {
+                background-color: #000000;
+                color: #ffffff;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            pre {
+                background-color: #f7fafc;
+                color: #000000;
+                border: 1px solid #cbd5e0;
+            }
+
+            pre code {
+                color: #000000;
+            }
+
+            .callout {
+                background-color: #ffffff;
+                border: 1px solid #cbd5e0;
+                border-left-width: 6px;
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+
+            .callout-prereq {
+                border-left-color: #3182ce;
+            }
+
+            .callout-warning {
+                border-left-color: #dd6b20;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>AI-Newsletter-Alternative (HCP Demo)</h1>
+        <p class="subtitle">Quick-Start-Anleitung zum Ausführen des lokalen Prototyps</p>
+    </header>
+
+    <div class="callout callout-prereq">
+        <div class="callout-title">📋 Einmalige Voraussetzung: Node.js installieren</div>
+        <p>Die Demo benötigt <strong>Node.js</strong> auf Ihrem Computer. Wenn Sie dieses noch nicht installiert haben, führen Sie bitte diesen Schritt zuerst aus:</p>
+        <ol>
+            <li>Öffnen Sie im Browser: <strong><a href="https://nodejs.org/en/download" target="_blank">nodejs.org/en/download</a></strong></li>
+            <li>Laden Sie die empfohlene Version herunter (Schaltfläche links: <strong>LTS</strong> für Long Term Support).</li>
+            <li>Führen Sie das Installationsprogramm aus (Sie können alle Standardeinstellungen einfach durchklicken).</li>
+            <li><em>Wichtig:</em> Falls Sie bereits ein Terminal geöffnet haben, schließen Sie dieses und öffnen Sie nach der Installation ein neues, damit Node.js erkannt wird.</li>
+        </ol>
+    </div>
+
+    <h2>🚀 Schritt-für-Schritt-Anleitung</h2>
+
+    <div class="step-list">
+        <!-- Step 1 -->
+        <div class="step-card">
+            <div class="step-number">1</div>
+            <div class="step-title">Projektordner entpacken</div>
+            <p>
+                <span class="os-badge os-win">Windows</span> Klicken Sie mit der rechten Maustaste auf <code>ai-newsletter-alternative-hcps-new-version-2026-06-02.zip</code> und wählen Sie <strong>"Alle extrahieren..."</strong>. Wählen Sie z. B. Ihren Desktop als Ziel aus. 
+                <span class="highlight">(Achtung: Nicht einfach nur doppelklicken und den Ordner in der ZIP-Ansicht öffnen!)</span>
+            </p>
+            <p>
+                <span class="os-badge os-mac">macOS / Mac</span> Doppelklicken Sie auf die ZIP-Datei. Ein Ordner namens <code>ai-newsletter-alternative-hcps</code> erscheint automatisch.
+            </p>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="step-card">
+            <div class="step-number">2</div>
+            <div class="step-title">Terminal / Eingabeaufforderung öffnen</div>
+            <p>
+                <span class="os-badge os-win">Windows</span> Drücken Sie die Windows-Taste auf der Tastatur, geben Sie <code>cmd</code> ein und drücken Sie <strong>Enter</strong>. Ein schwarzes Fenster (die Eingabeaufforderung) öffnet sich.
+            </p>
+            <p>
+                <span class="os-badge os-mac">macOS / Mac</span> Drücken Sie <strong>cmd + Leertaste</strong>, geben Sie <code>Terminal</code> ein und drücken Sie <strong>Enter</strong>.
+            </p>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="step-card">
+            <div class="step-number">3</div>
+            <div class="step-title">In den Demo-Ordner navigieren (Drag & Drop)</div>
+            <ol>
+                <li>Tippen Sie im Terminal-Fenster den Befehl <code>cd</code> gefolgt von einem <strong>Leerzeichen</strong> ein (noch nicht Enter drücken!).</li>
+                <li>Ziehen Sie den entpackten Ordner <code>ai-newsletter-alternative-hcps</code> mit der Maus aus Ihrem Datei-Explorer (Finder/Windows-Explorer) und lassen Sie ihn im Terminal-Fenster fallen. Der Pfad wird automatisch eingefügt.</li>
+                <li>Drücken Sie nun <strong>Enter</strong>.</li>
+            </ol>
+        </div>
+
+        <!-- Step 4 -->
+        <div class="step-card">
+            <div class="step-number">4</div>
+            <div class="step-title">Abhängigkeiten installieren</div>
+            <p>Geben Sie den folgenden Befehl im Terminal ein und drücken Sie <strong>Enter</strong>:</p>
+            <pre><code>npm install</code></pre>
+            <p>Dies lädt die benötigten Module herunter. Das dauert ca. 10 bis 30 Sekunden. Eventuelle Warnungen im Terminal können Sie einfach ignorieren.</p>
+        </div>
+
+        <!-- Step 5 -->
+        <div class="step-card">
+            <div class="step-number">5</div>
+            <div class="step-title">Demo starten</div>
+            <p>Geben Sie den folgenden Befehl ein und drücken Sie <strong>Enter</strong>:</p>
+            <pre><code>npm run dev</code></pre>
+            <p>
+                Es wird ein lokaler Webserver gestartet. Sie sehen die Erfolgsmeldung:<br>
+                <code>Relevance Engine demo running at http://127.0.0.1:5173</code>
+            </p>
+            <p class="highlight" style="color: #c53030;">Lassen Sie dieses Terminal-Fenster während der Benutzung unbedingt geöffnet! Wenn Sie es schließen, beenden Sie die App.</p>
+        </div>
+
+        <!-- Step 6 -->
+        <div class="step-card">
+            <div class="step-number">6</div>
+            <div class="step-title">App im Browser öffnen</div>
+            <p>Klicken Sie im Terminal auf den angezeigten Link oder tippen Sie folgende Adresse in Ihrem Browser (z. B. Chrome, Safari, Edge) ein:</p>
+            <p class="highlight" style="font-size: 18px; text-align: center; margin: 15px 0;">
+                👉 <a href="http://127.0.0.1:5173/" target="_blank">http://127.0.0.1:5173/</a>
+            </p>
+        </div>
+    </div>
+
+
+    <div class="callout callout-warning">
+        <div class="callout-title">⚠️ Wichtige Hinweise</div>
+        <ul>
+            <li><strong>API-Schlüssel:</strong> In der ZIP-Datei befindet sich bereits die Datei <code>.env.local</code> mit einem voreingestellten OpenAI-Demo-Schlüssel. Der Test funktioniert sofort live, ohne dass Sie etwas konfigurieren müssen. Geben Sie die Datei aus Sicherheitsgründen bitte nicht öffentlich weiter.</li>
+            <li><strong>Nur Testdaten:</strong> Das System läuft rein mit synthetischen, fiktiven Patientenfällen. Es werden zu keinem Zeitpunkt echte Patientendaten verarbeitet.</li>
+            <li><strong>Demo beenden:</strong> Um den Server zu beenden, gehen Sie zurück ins Terminal-Fenster und drücken Sie die Tastenkombination <strong>Strg + C</strong> (Windows/Mac) oder schließen Sie einfach das Terminal-Fenster.</li>
+        </ul>
+    </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Newsletter Alternative - HCP Demo Instructions</title>
+    <style>
+        /* Modern System Font Stack */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            color: #2d3748;
+            line-height: 1.6;
+            margin: 0;
+            padding: 40px 20px;
+            background-color: #f7fafc;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            border: 1px solid #e2e8f0;
+        }
+
+        /* Header Styling */
+        header {
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 24px;
+            margin-bottom: 32px;
+        }
+
+        h1 {
+            color: #1a365d;
+            font-size: 28px;
+            margin: 0 0 8px 0;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            color: #4a5568;
+            font-size: 16px;
+            margin: 0;
+        }
+
+        /* Sections */
+        h2 {
+            color: #2b6cb0;
+            font-size: 20px;
+            margin-top: 32px;
+            margin-bottom: 16px;
+            font-weight: 600;
+            border-bottom: 1px solid #edf2f7;
+            padding-bottom: 8px;
+        }
+
+        p {
+            margin: 0 0 16px 0;
+        }
+
+        /* Steps Layout */
+        .step-list {
+            margin-bottom: 32px;
+        }
+
+        .step-card {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            position: relative;
+            padding-left: 60px;
+        }
+
+        .step-number {
+            position: absolute;
+            left: 18px;
+            top: 20px;
+            width: 30px;
+            height: 30px;
+            background-color: #3182ce;
+            color: #ffffff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 15px;
+        }
+
+        .step-title {
+            font-weight: 600;
+            color: #1a202c;
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+
+        .os-badge {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-right: 4px;
+        }
+        .os-win {
+            background-color: #ebf8ff;
+            color: #2b6cb0;
+        }
+        .os-mac {
+            background-color: #f7fafc;
+            color: #4a5568;
+            border: 1px solid #cbd5e0;
+        }
+
+        /* Commands Styling */
+        code {
+            font-family: Consolas, Monaco, "Andale Mono", monospace;
+            background-color: #edf2f7;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #805ad5;
+        }
+
+        pre {
+            background-color: #1a202c;
+            color: #f7fafc;
+            padding: 14px 18px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 12px 0;
+        }
+
+        pre code {
+            background-color: transparent;
+            padding: 0;
+            color: inherit;
+            font-size: 14px;
+        }
+
+        /* Lists */
+        ul, ol {
+            margin: 0 0 16px 0;
+            padding-left: 20px;
+        }
+
+        li {
+            margin-bottom: 6px;
+        }
+
+        /* Warning / Info Callouts */
+        .callout {
+            border-left: 4px solid #cbd5e0;
+            background-color: #f7fafc;
+            padding: 16px;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 24px;
+        }
+
+        .callout-prereq {
+            border-left-color: #3182ce;
+            background-color: #ebf8ff;
+        }
+
+        .callout-warning {
+            border-left-color: #dd6b20;
+            background-color: #fffaf0;
+        }
+
+        .callout-title {
+            font-weight: bold;
+            margin-bottom: 6px;
+            color: #2d3748;
+        }
+        .callout-prereq .callout-title {
+            color: #2b6cb0;
+        }
+        .callout-warning .callout-title {
+            color: #dd6b20;
+        }
+
+        a {
+            color: #3182ce;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        /* Highlight */
+        .highlight {
+            font-weight: 600;
+            color: #1a202c;
+        }
+
+        /* Print Optimization Styles */
+        @media print {
+            body {
+                background-color: #ffffff;
+                color: #000000;
+                padding: 0;
+            }
+
+            .container {
+                box-shadow: none;
+                border: none;
+                padding: 0;
+                max-width: 100%;
+            }
+
+            header {
+                border-bottom-color: #cbd5e0;
+            }
+
+            .step-card {
+                background-color: #ffffff;
+                border-color: #cbd5e0;
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+
+            .step-number {
+                background-color: #000000;
+                color: #ffffff;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            pre {
+                background-color: #f7fafc;
+                color: #000000;
+                border: 1px solid #cbd5e0;
+            }
+
+            pre code {
+                color: #000000;
+            }
+
+            .callout {
+                background-color: #ffffff;
+                border: 1px solid #cbd5e0;
+                border-left-width: 6px;
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+
+            .callout-prereq {
+                border-left-color: #3182ce;
+            }
+
+            .callout-warning {
+                border-left-color: #dd6b20;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>AI Newsletter Alternative (HCP Demo)</h1>
+        <p class="subtitle">Quick start instructions for running the local prototype</p>
+    </header>
+
+    <div class="callout callout-prereq">
+        <div class="callout-title">📋 One-time Setup: Install Node.js</div>
+        <p>The demo requires <strong>Node.js</strong> to run on your computer. If you do not have it installed, please complete this step first:</p>
+        <ol>
+            <li>Open in your browser: <strong><a href="https://nodejs.org/en/download" target="_blank">nodejs.org/en/download</a></strong></li>
+            <li>Download the recommended version (Left button: <strong>LTS</strong> for Long Term Support).</li>
+            <li>Run the installer (you can accept all default options).</li>
+            <li><em>Important:</em> If you already had a terminal window open, close it and open a new one after installation so that Node.js is recognized.</li>
+        </ol>
+    </div>
+
+    <h2>🚀 Step-by-Step Setup Guide</h2>
+
+    <div class="step-list">
+        <!-- Step 1 -->
+        <div class="step-card">
+            <div class="step-number">1</div>
+            <div class="step-title">Unzip the Project Folder</div>
+            <p>
+                <span class="os-badge os-win">Windows</span> Right-click the file <code>ai-newsletter-alternative-hcps-new-version-2026-06-02.zip</code> and select <strong>"Extract All..."</strong>. Choose a destination folder (e.g., your Desktop).
+                <span class="highlight">(Warning: Do not just double-click to look inside the ZIP. You must extract it first for the scripts to run correctly.)</span>
+            </p>
+            <p>
+                <span class="os-badge os-mac">macOS / Mac</span> Double-click the ZIP file. A folder named <code>ai-newsletter-alternative-hcps</code> will automatically appear in the same directory.
+            </p>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="step-card">
+            <div class="step-number">2</div>
+            <div class="step-title">Open Terminal / Command Prompt</div>
+            <p>
+                <span class="os-badge os-win">Windows</span> Press the Windows key on your keyboard, type <code>cmd</code>, and press <strong>Enter</strong>. A black command window will open.
+            </p>
+            <p>
+                <span class="os-badge os-mac">macOS / Mac</span> Hold <strong>cmd + Spacebar</strong>, type <code>Terminal</code>, and press <strong>Enter</strong>.
+            </p>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="step-card">
+            <div class="step-number">3</div>
+            <div class="step-title">Navigate into the Project Folder (Drag & Drop)</div>
+            <ol>
+                <li>In your terminal window, type <code>cd</code> followed by a <strong>space</strong> (do not press Enter yet).</li>
+                <li>Drag the extracted folder <code>ai-newsletter-alternative-hcps</code> from your file browser (Finder/Explorer) and drop it directly into the terminal window. The path will fill in automatically.</li>
+                <li>Press <strong>Enter</strong>.</li>
+            </ol>
+        </div>
+
+        <!-- Step 4 -->
+        <div class="step-card">
+            <div class="step-number">4</div>
+            <div class="step-title">Install Dependencies</div>
+            <p>Type the following command in the terminal and press <strong>Enter</strong>:</p>
+            <pre><code>npm install</code></pre>
+            <p>This downloads the required software modules. It takes about 10–30 seconds. You can safely ignore any warning messages during this process.</p>
+        </div>
+
+        <!-- Step 5 -->
+        <div class="step-card">
+            <div class="step-number">5</div>
+            <div class="step-title">Start the Demo</div>
+            <p>Type the following command and press <strong>Enter</strong>:</p>
+            <pre><code>npm run dev</code></pre>
+            <p>
+                This starts a local web server. You will see a success message:<br>
+                <code>Relevance Engine demo running at http://127.0.0.1:5173</code>
+            </p>
+            <p class="highlight" style="color: #c53030;">Keep this terminal window open while using the demo! Closing the window will stop the app.</p>
+        </div>
+
+        <!-- Step 6 -->
+        <div class="step-card">
+            <div class="step-number">6</div>
+            <div class="step-title">Open the App in Your Browser</div>
+            <p>Click the link in your terminal or type the following address into your web browser (e.g., Chrome, Safari, Edge):</p>
+            <p class="highlight" style="font-size: 18px; text-align: center; margin: 15px 0;">
+                👉 <a href="http://127.0.0.1:5173/" target="_blank">http://127.0.0.1:5173/</a>
+            </p>
+        </div>
+    </div>
+
+    <div class="callout callout-warning">
+        <div class="callout-title">⚠️ Troubleshooting & Key Notes</div>
+        <ul>
+            <li><strong>API Keys:</strong> The project includes a <code>.env.local</code> file containing a demo OpenAI API key so that live AI relevance reasoning works out-of-the-box.
+                <br><em>Security Note:</em> This is a private testing package. Do not upload this folder or its files to public repositories.
+            </li>
+            <li><strong>Error: "npm: command not found":</strong> Node.js is not installed, or you need to restart your Terminal app to apply the installation path. Close the terminal, reinstall Node.js, and open a new terminal window.</li>
+            <li><strong>Error: "Port 5173 already in use":</strong> Another process is occupying the local address. Close all active terminal windows and try running <code>npm run dev</code> again.</li>
+            <li><strong>Stop the Server:</strong> To close the demo completely, go to your terminal window, press <strong>Ctrl + C</strong> (Windows/Mac) or simply close the terminal window.</li>
+            <li><strong>Demo Data only:</strong> This app uses simulated patient cases and does not contain or process any real patient health records.</li>
+        </ul>
+    </div>
+</div>
+
+</body>
+</html>
