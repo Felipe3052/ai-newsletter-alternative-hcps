@@ -100,17 +100,15 @@ export function OnboardingTour({ activeTab, setActiveTab, onClose }: OnboardingT
     }
 
     const elementRect = el.getBoundingClientRect();
-    const scrollTop = window.scrollY || document.documentElement.scrollTop;
-    const scrollLeft = window.scrollX || document.documentElement.scrollLeft;
 
     const padding = 8;
     const absoluteRect = {
-      top: elementRect.top + scrollTop - padding,
-      left: elementRect.left + scrollLeft - padding,
+      top: elementRect.top - padding,
+      left: elementRect.left - padding,
       width: elementRect.width + padding * 2,
       height: elementRect.height + padding * 2,
-      bottom: elementRect.bottom + scrollTop + padding,
-      right: elementRect.right + scrollLeft + padding,
+      bottom: elementRect.bottom + padding,
+      right: elementRect.right + padding,
     };
 
     setRect(absoluteRect as unknown as DOMRect);
@@ -183,9 +181,9 @@ export function OnboardingTour({ activeTab, setActiveTab, onClose }: OnboardingT
       top = rect.top + rect.height / 2 - tooltipHeight / 2;
     }
 
-    // Keep vertically inside bounds relative to document height
-    const docHeight = document.documentElement.scrollHeight;
-    top = Math.max(16, Math.min(docHeight - tooltipHeight - 16, top));
+    // Keep vertically inside bounds relative to viewport height
+    const viewportHeight = window.innerHeight;
+    top = Math.max(16, Math.min(viewportHeight - tooltipHeight - 16, top));
 
     setTooltipStyle((prev) => ({
       ...prev,
